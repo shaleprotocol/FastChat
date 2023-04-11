@@ -1,0 +1,1 @@
+python3 -m fastchat.serve.cli --model-name /data/ml/llm/vicuna-13b --num-gpus 2
