@@ -676,7 +676,15 @@ if __name__ == "__main__":
     logger.info(f"args: {args}")
 
     set_global_vars(args.controller_url, args.moderate)
-    models = get_model_list(args.controller_url)
+
+    # Ning: Wait for the first work init 
+    models = None
+    while not models:
+        time.sleep(1)
+        try:
+            models = get_model_list(args.controller_url)
+        except RuntimeError:
+            continue
 
     if args.add_chatgpt:
         models = ["gpt-3.5-turbo", "gpt-4"] + models
