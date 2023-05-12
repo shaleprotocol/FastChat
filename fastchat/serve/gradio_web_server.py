@@ -603,6 +603,7 @@ if __name__ == "__main__":
         help="Add Anthropic's Claude models (claude-v1)",
     )
 
+    # Ning: shale flags
     parser.add_argument(
         "--shale-fixed-models",
         action="store_true",
@@ -617,9 +618,10 @@ if __name__ == "__main__":
 
     if args.shale_fixed_models:
         models = ['vicuna-7b-v1.1', 'vicuna-13b-v1.1']
+    else:
+        models = None
 
     # Ning: Wait for the first work init 
-    models = None
     while not models:
         time.sleep(1)
         try:
