@@ -603,10 +603,20 @@ if __name__ == "__main__":
         help="Add Anthropic's Claude models (claude-v1)",
     )
 
+    parser.add_argument(
+        "--shale-fixed-models",
+        action="store_true",
+        help="Add Shale Protocol models",
+    )
+
+
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
     set_global_vars(args.controller_url, args.moderate)
+
+    if args.shale_fixed_models:
+        models = ['vicuna-7b-v1.1', 'vicuna-13b-v1.1']
 
     # Ning: Wait for the first work init 
     models = None
