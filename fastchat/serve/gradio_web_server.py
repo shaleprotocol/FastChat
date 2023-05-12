@@ -618,11 +618,12 @@ if __name__ == "__main__":
 
     if args.shale_fixed_models:
         models = ['vicuna-7b-v1.1', 'vicuna-13b-v1.1']
+        logger.info(f"shale_fixed_models: {models}")
     else:
         models = None
 
     # Ning: Wait for the first work init 
-    while not models:
+    while models is None:
         time.sleep(1)
         try:
             models = get_model_list(args.controller_url)
