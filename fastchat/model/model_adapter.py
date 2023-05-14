@@ -107,6 +107,7 @@ def load_model(
         kwargs = {"torch_dtype": torch.float16}
         if num_gpus != 1:
             kwargs["device_map"] = "auto"
+            kwargs["offload_folder"] = "/tmp/offload"
             if max_gpu_memory is None:
                 kwargs[
                     "device_map"
