@@ -79,6 +79,7 @@ async def validation_exception_handler(request, exc):
 
 
 async def check_model(request) -> Optional[JSONResponse]:
+    request.model = 'vicuna-13b-v1.1'
     controller_address = app_settings.controller_address
     ret = None
     async with httpx.AsyncClient() as client:
