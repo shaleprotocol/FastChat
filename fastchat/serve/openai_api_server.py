@@ -199,6 +199,8 @@ def get_gen_params(
 
     print('1111111111')
     print(messages)
+    logger.info("111111111")
+    logger.info(messages)
 
     if isinstance(messages, str):
         prompt = messages
