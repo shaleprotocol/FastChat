@@ -197,6 +197,9 @@ def get_gen_params(
 ) -> Dict[str, Any]:
     conv = get_conversation_template(model_name)
 
+    print('1111111111')
+    print(messages)
+
     if isinstance(messages, str):
         prompt = messages
     elif isinstance(messages, list) and len(messages) > 0 and isinstance(messages[0], str):
