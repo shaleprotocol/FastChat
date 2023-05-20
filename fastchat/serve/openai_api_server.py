@@ -197,11 +197,6 @@ def get_gen_params(
 ) -> Dict[str, Any]:
     conv = get_conversation_template(model_name)
 
-    print('1111111111')
-    print(messages)
-    logger.info("111111111")
-    logger.info(messages)
-
     if isinstance(messages, str):
         prompt = messages
     elif isinstance(messages, list) and len(messages) > 0 and isinstance(messages[0], str):
@@ -726,4 +721,4 @@ if __name__ == "__main__":
 
     logger.info(f"args: {args}")
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="debug")
