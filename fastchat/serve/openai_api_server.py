@@ -53,6 +53,11 @@ from fastchat.protocol.openai_api_protocol import (
     UsageInfo,
 )
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,8 +68,13 @@ class AppSettings(BaseSettings):
 
 app_settings = AppSettings()
 
+limiter = Limiter(key_func=get_remote_address, default_limits=[os.environ.get('SHALE_GLOBAL_LIMIT', '60/minute')])
+
 app = fastapi.FastAPI()
 headers = {"User-Agent": "FastChat API Server"}
+app.state.limiter = limiter 
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -79,7 +89,7 @@ async def validation_exception_handler(request, exc):
 
 
 async def check_model(request) -> Optional[JSONResponse]:
-    request.model = 'vicuna-13b-v1.1'
+    request.model = os.environ.get('SHALE_DEFAULT_MODEL', 'vicuna-13b-v1.1')
     controller_address = app_settings.controller_address
     ret = None
     async with httpx.AsyncClient() as client:
