@@ -58,7 +58,9 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from .shale import APIKeyChecker
+from .shale import APIKeyChecker, SecretRequest
+from .shale import create_ak
+from fastapi.requests import Request
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +284,16 @@ async def _get_worker_address(model_name: str, client: httpx.AsyncClient) -> str
     logger.debug(f"model_name: {model_name}, worker_addr: {worker_addr}")
     return worker_addr
 
+@app.post("/v1/shale_create_api_key")
+async def shale_create_api_key(request: SecretRequest):
+    if request.secret != os.environ["SHALE_ADMIN_SECRET"]:
+        response = JSONResponse({"error": "Invalid secret"}, status_code=401)
+    elif request.user_id is None and request.user_email is None:
+        response = JSONResponse({"error": "Either user_id or user_email should be provided"}, status_code=400)
+    else:
+        ak = create_ak(request.user_id, request.user_email)
+        response = JSONResponse({"success": {"API_KEY": ak}})
+    return response
 
 @app.get("/v1/models")
 async def show_available_models():
