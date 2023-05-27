@@ -76,8 +76,8 @@ app = fastapi.FastAPI()
 headers = {"User-Agent": "FastChat API Server"}
 app.state.limiter = limiter 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(APIKeyChecker)
+app.add_middleware(SlowAPIMiddleware)
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:

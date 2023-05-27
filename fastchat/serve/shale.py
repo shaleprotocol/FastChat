@@ -18,7 +18,7 @@ def check_redis_count(ak):
     return cnt
         
 def check_ak(ak):
-    return True
+    return ak != 'INVALID'
 
 class APIKeyChecker(BaseHTTPMiddleware):
     async def dispatch(
@@ -30,11 +30,19 @@ class APIKeyChecker(BaseHTTPMiddleware):
             if cnt <= os.environ.get("SHALE_AK_RATE_LIMIT", 1):
                 response = await call_next(request)
             else:
-                print(ak, cnt)
                 response = JSONResponse({"error": {
-                    f"Rate limit of {ak} exceeded: {cnt}"}
-                }, status_code=429)
+                    "code": 429,
+                    "type": "limit_exceed",
+                    "message": f"Rate limit of {ak} exceeded: {cnt}",
+                    "param": ""
+
+                }}, status_code=429)
         else:
-            print(ak)
-            response = JSONResponse({"error": f"Invalid API_KEY {ak}"}, status_code=429)
+            response = JSONResponse({"error": {
+                "code": 401,
+                "type": "invalid_ak",
+                "message": f"Invalid API_KEY: {ak}",
+                "param": ""
+
+            }}, status_code=401)
         return response
