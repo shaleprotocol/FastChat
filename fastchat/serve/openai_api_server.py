@@ -288,8 +288,6 @@ async def _get_worker_address(model_name: str, client: httpx.AsyncClient) -> str
 async def shale_create_api_key(request: SecretRequest):
     if request.secret != get_shale_secret():
         response = JSONResponse({"error": "Invalid secret"}, status_code=401)
-    elif request.user_id is None and request.user_email is None:
-        response = JSONResponse({"error": "Either user_id or user_email should be provided"}, status_code=400)
     else:
         ak = create_ak(request.user_id, request.user_email)
         response = JSONResponse({"success": {"API_KEY": ak}})

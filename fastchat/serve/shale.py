@@ -5,6 +5,7 @@ import hashlib
 import os
 import redis
 
+from datetime import datetime
 from pydantic import BaseModel
 
 from starlette.middleware.base import (
@@ -42,7 +43,7 @@ def init_mysql_tabels():
 
 
 def increase_redis_count(ak):
-    r = redis.Redis()
+    r = redis.Redis(host="redis")
     if r.exists(ak):
         r.incr(ak)
     else:
@@ -50,7 +51,7 @@ def increase_redis_count(ak):
         r.expire(ak, 60 * 60 * 24)
 
 def get_redis_count(ak):
-    r = redis.Redis()
+    r = redis.Redis(host="redis")
     if r.exists(ak):
         return int(r.get(ak))
     return 0
@@ -62,7 +63,7 @@ def check_ak(ak):
         return result.one_or_none() is not None
 
 def create_ak(user_id, user_email):
-    ak = 'SHALE-'+ base64.b64encode(hashlib.sha256((user_id + get_shale_secret()).encode()).digest()).decode()
+    ak = 'SHALE-'+ base64.b64encode(hashlib.sha256((user_id + get_shale_secret() + datetime.now().strftime('$Y-%m-%d:%H:%M:%S.%f')).encode()).digest()).decode()
     with Session(engine) as session:
         session.merge(UserApiKey(api_key=ak, user_id=user_id, user_email=user_email))
         session.commit()
@@ -78,7 +79,7 @@ class APIKeyChecker(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        if "authorization" not in request.headers or request.headers["authorization"].startswith('Bearer '):
+        if "authorization" not in request.headers or not request.headers["authorization"].startswith('Bearer '):
             if request.url.path == "/v1/shale_create_api_key":
                 response = await call_next(request)
             else:
@@ -93,13 +94,13 @@ class APIKeyChecker(BaseHTTPMiddleware):
             cnt = get_redis_count(ak)
             if cnt > 0 or check_ak(ak):
                 increase_redis_count(ak)
-                if cnt <= os.environ.get("SHALE_AK_RATE_LIMIT", 1000):
+                if cnt < int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000)):
                     response = await call_next(request)
                 else:
                     response = JSONResponse({"error": {
                         "code": 429,
                         "type": "limit_exceed",
-                        "message": f"Rate limit of {ak} exceeded: {cnt}",
+                        "message": f"Rate limit of {ak} exceeded: {cnt+1}",
                         "param": ""
 
                     }}, status_code=429)
