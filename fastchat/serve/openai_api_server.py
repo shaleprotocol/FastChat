@@ -59,7 +59,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
 from .shale import APIKeyChecker, SecretRequest
-from .shale import create_ak
+from .shale import create_ak, get_shale_secret
 from fastapi.requests import Request
 
 logger = logging.getLogger(__name__)
@@ -286,7 +286,7 @@ async def _get_worker_address(model_name: str, client: httpx.AsyncClient) -> str
 
 @app.post("/v1/shale_create_api_key")
 async def shale_create_api_key(request: SecretRequest):
-    if request.secret != os.environ["SHALE_ADMIN_SECRET"]:
+    if request.secret != get_shale_secret():
         response = JSONResponse({"error": "Invalid secret"}, status_code=401)
     elif request.user_id is None and request.user_email is None:
         response = JSONResponse({"error": "Either user_id or user_email should be provided"}, status_code=400)
