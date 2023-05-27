@@ -58,6 +58,8 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
+from .shale import APIKeyChecker
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +77,7 @@ headers = {"User-Agent": "FastChat API Server"}
 app.state.limiter = limiter 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(APIKeyChecker)
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
