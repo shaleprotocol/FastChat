@@ -719,6 +719,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--allowed-headers", type=json.loads, default=["*"], help="allowed headers"
     )
+
+    # Shale
+    parser.add_argument('--reload', action=argparse.BooleanOptionalAction)
+
     args = parser.parse_args()
 
     app.add_middleware(
@@ -732,4 +736,4 @@ if __name__ == "__main__":
 
     logger.info(f"args: {args}")
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="debug")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="debug", reload=args.reload)
