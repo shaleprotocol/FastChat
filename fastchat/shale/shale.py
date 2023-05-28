@@ -63,7 +63,8 @@ def check_ak(ak):
         return result.one_or_none() is not None
 
 def create_ak(user_id, user_email):
-    ak = 'SHALE-'+ base64.b64encode(hashlib.sha256((user_id + get_shale_secret() + datetime.now().strftime('$Y-%m-%d:%H:%M:%S.%f')).encode()).digest()).decode()
+    ak = 'shale-'+ base64.b64encode(hashlib.sha256((user_id + get_shale_secret() + datetime.now().strftime('$Y-%m-%d:%H:%M:%S.%f')).encode()).digest()).decode()
+    ak = ak[:20]
     with Session(engine) as session:
         session.merge(UserApiKey(api_key=ak, user_id=user_id, user_email=user_email))
         session.commit()
@@ -127,4 +128,4 @@ if __name__ == '__main__':
     elif args.subcommand == 'create_ak':
         print(create_ak("shale", "shale@shaleprotocol.com"))
     elif args.subcommand == 'check_ak':
-        print(check_ak("SHALE-Fb99b3vEhELzB9gvO8ASe2VYvp73jLCNN+zn+7yzrl0="))
+        print(check_ak("shale-lHH0EZBAZGzMS1"))
