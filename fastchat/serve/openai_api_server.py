@@ -58,8 +58,12 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from .shale import APIKeyChecker, SecretRequest
-from .shale import create_ak, get_shale_secret
+
+### Shale
+from fastchat.shale.shale import APIKeyChecker, SecretRequest, create_ak, get_shale_secret
+###
+
+
 from fastapi.requests import Request
 
 logger = logging.getLogger(__name__)
