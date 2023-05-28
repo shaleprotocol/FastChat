@@ -60,7 +60,7 @@ from slowapi.errors import RateLimitExceeded
 
 
 ### Shale
-from fastchat.shale.shale import APIKeyChecker, SecretRequest, create_ak, get_shale_secret
+from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret
 ###
 
 
@@ -83,6 +83,7 @@ headers = {"User-Agent": "FastChat API Server"}
 app.state.limiter = limiter 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(APIKeyChecker)
+app.add_middleware(RequestLogger)
 app.add_middleware(SlowAPIMiddleware)
 
 

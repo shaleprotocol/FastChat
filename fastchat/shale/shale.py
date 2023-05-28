@@ -1,26 +1,24 @@
-
 import argparse
 import base64
 import hashlib
 import os
-import redis
-
+import asyncio
+import uuid
 from datetime import datetime
-from pydantic import BaseModel
-
-from starlette.middleware.base import (
-    BaseHTTPMiddleware,
-    RequestResponseEndpoint,
-)
-from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
-
 from typing import Optional
 
-from sqlalchemy import Table, Column, Integer, String, MetaData, create_engine, select
-
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import declarative_base
+import redis
+from pydantic import BaseModel
+from sqlalchemy import (Column, DateTime, Integer, String, Text, Time, Uuid,
+                        create_engine, select)
+from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.sql import func
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.types import Message
+from starlette.background import BackgroundTask
 
 Base = declarative_base()
 mysql_url = 'mysql://root:mysql_password@mysql/shale'
@@ -35,6 +33,22 @@ class UserApiKey(Base):
     user_id = Column(String(255), primary_key=True)
     user_email = Column(String(255))
     api_key = Column(String(255))
+
+class RequestLog(Base):
+    __tablename__ = "request_log"
+
+    request_id = Column(Uuid, primary_key=True)
+    api_key = Column(String(255))
+    method = Column(String(20))
+    url = Column(String(100))
+    client_host = Column(String(20))
+    client_port = Column(Integer)
+    headers = Column(Text)
+    request_body = Column(Text)
+    response_body = Column(Text)
+    duration = Column(Time)
+    time_created = Column(DateTime(timezone=False), server_default=func.now())
+    time_updated = Column(DateTime(timezone=False), onupdate=func.now())
 
 
 def init_mysql_tabels():
@@ -69,6 +83,26 @@ def create_ak(user_id, user_email):
         session.merge(UserApiKey(api_key=ak, user_id=user_id, user_email=user_email))
         session.commit()
     return ak
+
+async def log_request_to_db(request, req_body):
+    request_id = uuid.uuid4()
+
+    ak = ''
+    if 'authorization' in request.headers and request.headers['authorization'].startswith('Bearer '):
+        ak = request.headers['authorization'].split()[1]
+
+    with Session(engine) as session:
+        log_entry = RequestLog(
+            request_id=request_id,
+            api_key=ak,
+            method=request.method,
+            url=request.url,
+            headers=str(request.headers),
+            client_host=request.client.host,
+            client_port=request.client.port,
+            request_body=req_body.decode())
+        session.merge(log_entry)
+        session.commit()
 
 
 class SecretRequest(BaseModel):
@@ -115,6 +149,22 @@ class APIKeyChecker(BaseHTTPMiddleware):
                 }}, status_code=401)
         return response
 
+
+class RequestLogger(BaseHTTPMiddleware):
+
+    async def set_body(self, request: Request, body: bytes):
+        async def receive() -> Message:
+            return {'type': 'http.request', 'body': body}
+        request._receive = receive
+        
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        req_body = await request.body()
+        await self.set_body(request, req_body)
+        response = await call_next(request)
+        asyncio.create_task(log_request_to_db(request, req_body))
+        return response
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
