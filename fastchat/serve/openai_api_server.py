@@ -76,7 +76,7 @@ class AppSettings(BaseSettings):
 
 app_settings = AppSettings()
 
-limiter = Limiter(key_func=get_remote_address, default_limits=[os.environ.get('SHALE_GLOBAL_LIMIT', '60/minute')])
+limiter = Limiter(key_func=get_remote_address, default_limits=[os.environ.get('SHALE_GLOBAL_LIMIT', '120/minute')])
 
 app = fastapi.FastAPI()
 headers = {"User-Agent": "FastChat API Server"}
