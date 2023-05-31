@@ -23,11 +23,30 @@ Base = declarative_base()
 mysql_url = 'mysql://root:mysql_password@mysql/shale'
 engine = create_engine(mysql_url, echo=True)
 
+shale_admin_secret = os.environ.get("SHALE_ADMIN_SECRET", 'test_secret')
+
 default_api_limit = int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000))
+
+first_patry_users = ['shale', 'chatbot', 'research']
 
 
 def get_shale_secret():
-    return os.environ["SHALE_ADMIN_SECRET"]
+    return shale_admin_secret
+
+
+def user_id_to_key(user_id):
+    ak = 'shale-' + \
+        base64.b64encode(hashlib.sha256(
+            (user_id + get_shale_secret()).encode()).digest()).decode()
+    ak = ak[:20]
+    return ak
+
+
+def get_ak_api_limit(ak):
+    for user in first_patry_users:
+        if user_id_to_key(user) == ak:
+            return 1000 * default_api_limit
+    return default_api_limit
 
 
 class UserApiKey(Base):
@@ -73,14 +92,6 @@ def check_ak(ak):
     with Session(engine) as session:
         result = session.execute(stmt)
         return result.one_or_none() is not None
-
-
-def user_id_to_key(user_id):
-    ak = 'shale-' + \
-        base64.b64encode(hashlib.sha256(
-            (user_id + get_shale_secret()).encode()).digest()).decode()
-    ak = ak[:20]
-    return ak
 
 
 def create_ak(user_id, user_email):
@@ -157,10 +168,11 @@ class APIKeyChecker(BaseHTTPMiddleware):
 
                     }}, status_code=401)
                 else:
-                    # Init entry in Redis.
-                    r.set(ak, default_api_limit - 1)
-                    r.expire(ak, 60 * 60 * 24)
                     response = await call_next(request)
+                    quota = get_ak_api_limit(ak)
+                    # Init entry in Redis.
+                    r.set(ak, quota - 1)
+                    r.expire(ak, 60 * 60 * 24)
             else:
                 remaind = r.decr(ak)
                 if remaind >= 0:
