@@ -23,10 +23,10 @@ Base = declarative_base()
 mysql_url = 'mysql://root:mysql_password@mysql/shale'
 engine = create_engine(mysql_url, echo=True)
 
+default_api_limit = int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000))
 
 def get_shale_secret():
     return os.environ["SHALE_ADMIN_SECRET"]
-
 
 class UserApiKey(Base):
     __tablename__ = "user_api_key"
@@ -58,20 +58,12 @@ def init_mysql_tabels():
     Base.metadata.create_all(engine)
 
 
-def increase_redis_count(ak):
-    r = redis.Redis(host="redis")
-    if r.exists(ak):
-        r.incr(ak)
-    else:
-        r.set(ak, 1)
-        r.expire(ak, 60 * 60 * 24)
-
-
 def get_redis_count(ak):
     r = redis.Redis(host="redis")
-    if r.exists(ak):
-        return int(r.get(ak))
-    return 0
+    v = r.get(ak)
+    if v is None:
+        return 0
+    return v
 
 
 def check_ak(ak):
@@ -136,27 +128,33 @@ class APIKeyChecker(BaseHTTPMiddleware):
                 }}, status_code=401)
         else:
             ak = request.headers["authorization"].split()[1]
-            cnt = get_redis_count(ak)
-            if cnt > 0 or check_ak(ak):
-                increase_redis_count(ak)
-                if cnt < int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000)):
+            r = redis.Redis(host="redis")
+            if not r.exists(ak):
+                if not check_ak(ak):
+                    response = JSONResponse({"error": {
+                        "code": 401,
+                        "type": "invalid_ak",
+                        "message": f"Forever FREE! Sign-up at https://shaleprotocol.com",
+                        "param": ""
+
+                    }}, status_code=401)
+                else:
+                    # Init entry in Redis.
+                    r.set(ak, default_api_limit - 1)
+                    r.expire(ak, 60 * 60 * 24)
+                    response = await call_next(request)
+            else:
+                remaind = r.decr(ak)
+                if remaind >= 0:
                     response = await call_next(request)
                 else:
                     response = JSONResponse({"error": {
                         "code": 429,
                         "type": "limit_exceed",
-                        "message": f"Rate limit of {ak} exceeded: {cnt+1}. Increase at https://shaleprotocol.com",
+                        "message": f"Quota of {ak} is reached. Contact us at https://shaleprotocol.com to increase.",
                         "param": ""
 
                     }}, status_code=429)
-            else:
-                response = JSONResponse({"error": {
-                    "code": 401,
-                    "type": "invalid_ak",
-                    "message": f"Forever FREE! Sign-up at https://shaleprotocol.com",
-                    "param": ""
-
-                }}, status_code=401)
         return response
 
 
