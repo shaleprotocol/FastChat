@@ -121,7 +121,7 @@ class APIKeyChecker(BaseHTTPMiddleware):
                 response = JSONResponse({"error": {
                     "code": 401,
                     "type": "no_ak",
-                    "message": f"API_KEY should be provided",
+                    "message": f"Forever FREE! Sign-up at https://shaleprotocol.com",
                     "param": ""
                 }}, status_code=401)
         else:
@@ -135,7 +135,7 @@ class APIKeyChecker(BaseHTTPMiddleware):
                     response = JSONResponse({"error": {
                         "code": 429,
                         "type": "limit_exceed",
-                        "message": f"Rate limit of {ak} exceeded: {cnt+1}",
+                        "message": f"Rate limit of {ak} exceeded: {cnt+1}. Increase at https://shaleprotocol.com",
                         "param": ""
 
                     }}, status_code=429)
@@ -143,7 +143,7 @@ class APIKeyChecker(BaseHTTPMiddleware):
                 response = JSONResponse({"error": {
                     "code": 401,
                     "type": "invalid_ak",
-                    "message": f"Invalid API_KEY: {ak}",
+                    "message": f"Forever FREE! Sign-up at https://shaleprotocol.com",
                     "param": ""
 
                 }}, status_code=401)
