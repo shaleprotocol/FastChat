@@ -25,8 +25,10 @@ engine = create_engine(mysql_url, echo=True)
 
 default_api_limit = int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000))
 
+
 def get_shale_secret():
     return os.environ["SHALE_ADMIN_SECRET"]
+
 
 class UserApiKey(Base):
     __tablename__ = "user_api_key"
@@ -62,7 +64,7 @@ def get_redis_count(ak):
     r = redis.Redis(host="redis")
     v = r.get(ak)
     if v is None:
-        return 0
+        return -1
     return v
 
 
@@ -73,16 +75,32 @@ def check_ak(ak):
         return result.one_or_none() is not None
 
 
-def create_ak(user_id, user_email):
+def user_id_to_key(user_id):
     ak = 'shale-' + \
         base64.b64encode(hashlib.sha256(
             (user_id + get_shale_secret()).encode()).digest()).decode()
     ak = ak[:20]
+    return ak
+
+
+def create_ak(user_id, user_email):
+    ak = user_id_to_key(user_id)
     with Session(engine) as session:
         session.merge(UserApiKey(
             api_key=ak, user_id=user_id, user_email=user_email))
         session.commit()
     return ak
+
+
+def get_my_quota(user_id):
+    ak = user_id_to_key(user_id)
+    v = get_redis_count(ak)
+    if v < 0:
+        if check_ak(ak):
+            return default_api_limit
+        else:
+            return -1
+    return v
 
 
 async def log_request_to_db(request, req_body):
@@ -188,3 +206,5 @@ if __name__ == '__main__':
         print(create_ak("shale", "shale@shaleprotocol.com"))
     elif args.subcommand == 'check_ak':
         print(check_ak("shale-lHH0EZBAZGzMS1"))
+    elif args.subcommand == 'get_my_quota':
+        print(get_my_quota("shale"))
