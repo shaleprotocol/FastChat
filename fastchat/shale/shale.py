@@ -18,14 +18,15 @@ from starlette.middleware.base import (BaseHTTPMiddleware,
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import Message
-from starlette.background import BackgroundTask
 
 Base = declarative_base()
 mysql_url = 'mysql://root:mysql_password@mysql/shale'
 engine = create_engine(mysql_url, echo=True)
 
+
 def get_shale_secret():
     return os.environ["SHALE_ADMIN_SECRET"]
+
 
 class UserApiKey(Base):
     __tablename__ = "user_api_key"
@@ -33,6 +34,7 @@ class UserApiKey(Base):
     user_id = Column(String(255), primary_key=True)
     user_email = Column(String(255))
     api_key = Column(String(255))
+
 
 class RequestLog(Base):
     __tablename__ = "request_log"
@@ -64,25 +66,31 @@ def increase_redis_count(ak):
         r.set(ak, 1)
         r.expire(ak, 60 * 60 * 24)
 
+
 def get_redis_count(ak):
     r = redis.Redis(host="redis")
     if r.exists(ak):
         return int(r.get(ak))
     return 0
-        
+
+
 def check_ak(ak):
     stmt = select(UserApiKey).where(UserApiKey.api_key == ak)
     with Session(engine) as session:
         result = session.execute(stmt)
         return result.one_or_none() is not None
 
+
 def create_ak(user_id, user_email):
-    ak = 'shale-'+ base64.b64encode(hashlib.sha256((user_id + get_shale_secret() + datetime.now().strftime('$Y-%m-%d:%H:%M:%S.%f')).encode()).digest()).decode()
+    ak = 'shale-' + base64.b64encode(hashlib.sha256((user_id + get_shale_secret(
+    ) + datetime.now().strftime('$Y-%m-%d:%H:%M:%S.%f')).encode()).digest()).decode()
     ak = ak[:20]
     with Session(engine) as session:
-        session.merge(UserApiKey(api_key=ak, user_id=user_id, user_email=user_email))
+        session.merge(UserApiKey(
+            api_key=ak, user_id=user_id, user_email=user_email))
         session.commit()
     return ak
+
 
 async def log_request_to_db(request, req_body):
     request_id = uuid.uuid4()
@@ -109,6 +117,7 @@ class SecretRequest(BaseModel):
     secret: str
     user_id: str
     user_email: Optional[str] = None
+
 
 class APIKeyChecker(BaseHTTPMiddleware):
     async def dispatch(
@@ -156,7 +165,7 @@ class RequestLogger(BaseHTTPMiddleware):
         async def receive() -> Message:
             return {'type': 'http.request', 'body': body}
         request._receive = receive
-        
+
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
@@ -165,6 +174,7 @@ class RequestLogger(BaseHTTPMiddleware):
         response = await call_next(request)
         asyncio.create_task(log_request_to_db(request, req_body))
         return response
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
