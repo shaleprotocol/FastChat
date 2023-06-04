@@ -4,7 +4,6 @@ import hashlib
 import os
 import asyncio
 import uuid
-from datetime import datetime
 from typing import Optional
 
 import redis
@@ -27,7 +26,9 @@ shale_admin_secret = os.environ.get("SHALE_ADMIN_SECRET", 'test_secret')
 
 default_api_limit = int(os.environ.get("SHALE_AK_RATE_LIMIT", 1000))
 
-first_patry_users = ['shale', 'chatbot', 'research']
+first_party_api_limit = 10000000
+
+first_party_users = ['shale', 'chatbot', 'research', 'chrome-plugin']
 
 
 def get_shale_secret():
@@ -43,9 +44,9 @@ def user_id_to_key(user_id):
 
 
 def get_ak_api_limit(ak):
-    for user in first_patry_users:
+    for user in first_party_users:
         if user_id_to_key(user) == ak:
-            return 1000 * default_api_limit
+            return first_party_api_limit
     return default_api_limit
 
 
