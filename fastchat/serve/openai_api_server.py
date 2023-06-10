@@ -99,19 +99,23 @@ async def validation_exception_handler(request, exc):
 
 
 async def check_model(request) -> Optional[JSONResponse]:
-    request.model = os.environ.get('SHALE_DEFAULT_MODEL', 'vicuna-13b-v1.1')
     controller_address = app_settings.controller_address
     ret = None
     async with httpx.AsyncClient() as client:
         try:
             _worker_addr = await _get_worker_address(request.model, client)
         except:
-            models_ret = await client.post(controller_address + "/list_models")
-            models = models_ret.json()["models"]
-            ret = create_error_response(
-                ErrorCode.INVALID_MODEL,
-                f"Only {'&&'.join(models)} allowed now, your model {request.model}",
-            )
+            # Shale: default model is guaranteed.
+            request.model = os.environ.get('SHALE_DEFAULT_MODEL', 'vicuna-13b-v1.1')
+
+            # Old logic:
+            #
+            # models_ret = await client.post(controller_address + "/list_models")
+            # models = models_ret.json()["models"]
+            # ret = create_error_response(
+            #     ErrorCode.INVALID_MODEL,
+            #     f"Only {'&&'.join(models)} allowed now, your model {request.model}",
+            # )
     return ret
 
 
