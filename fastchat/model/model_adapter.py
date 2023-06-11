@@ -208,6 +208,26 @@ def add_model_args(parser):
     )
 
 
+class FalconAdapter(BaseAdapter):
+    "Model adapater for Falcon-40b"
+
+    def match(self, model_path: str):
+        return "falcon" in model_path
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,  # Shale
+            **from_pretrained_kwargs,
+        )
+        return model, tokenizer
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("vicuna_v1.1")
+
+
 class VicunaAdapter(BaseAdapter):
     "Model adapater for vicuna-v1.1"
 
@@ -509,6 +529,7 @@ class H2OGPTAdapter(BaseAdapter):
 
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
+register_model_adapter(FalconAdapter)
 register_model_adapter(VicunaAdapter)
 register_model_adapter(T5Adapter)
 register_model_adapter(KoalaAdapter)
