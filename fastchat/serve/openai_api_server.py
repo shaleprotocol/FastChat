@@ -58,6 +58,26 @@ from fastchat.protocol.openai_api_protocol import (
     UsageInfo,
 )
 
+from fastchat.protocol.api_protocol import (
+    APIChatCompletionRequest,
+    APITokenCheckRequest,
+    APITokenCheckResponse,
+    APITokenCheckResponseItem,
+)
+
+
+###### Shale
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+
+from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret
+######
+
+
+from fastapi.requests import Request
+
 logger = logging.getLogger(__name__)
 
 conv_template_map = {}
