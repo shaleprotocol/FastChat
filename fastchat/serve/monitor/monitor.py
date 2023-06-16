@@ -14,6 +14,10 @@ from fastchat.serve.monitor.clean_battle_data import clean_battle_data
 from fastchat.serve.monitor.elo_analysis import report_elo_analysis_results
 from fastchat.utils import build_logger, get_window_url_params_js
 
+
+notebook_url = "https://colab.research.google.com/drive/17L9uCiAivzWfzOxo2Tb9RMauT7vS6nVU?usp=sharing"
+
+
 logger = build_logger("monitor", "monitor.log")
 
 
@@ -21,20 +25,10 @@ basic_component_values = [None] * 6
 leader_component_values = [None] * 5
 
 
-table_css = """
-table {
-    line-height: 0em
-}
-"""
-
-
-notebook_url = "https://colab.research.google.com/drive/1iI_IszGAwSMkdfUrIDI6NfTG7tGDDRxZ?usp=sharing"
-
-
 def make_leaderboard_md(elo_results):
     leaderboard_md = f"""
 # Leaderboard
-[[Blog](https://lmsys.org/blog/2023-05-03-arena/)] [[GitHub]](https://github.com/lm-sys/FastChat) [[Twitter]](https://twitter.com/lmsysorg) [[Discord]](https://discord.gg/KjdtsE9V)
+[[Blog](https://lmsys.org/blog/2023-05-03-arena/)] [[GitHub]](https://github.com/lm-sys/FastChat) [[Twitter]](https://twitter.com/lmsysorg) [[Discord]](https://discord.gg/HSWAKCrnFx)
 
 We use the Elo rating system to calculate the relative performance of the models. You can view the voting data, basic analyses, and calculation procedure in this [notebook]({notebook_url}). We will periodically release new leaderboards. If you want to see more models, please help us [add them](https://github.com/lm-sys/FastChat/blob/main/docs/arena.md#how-to-add-a-new-model).
 Last updated: {elo_results["last_updated_datetime"]}
@@ -100,9 +94,7 @@ def build_basic_stats_tab():
     basic_component_values[:] = [empty, None, empty, empty, empty, empty]
 
     md0 = gr.Markdown(empty)
-    gr.Markdown(
-        "#### Figure 1: Number of model calls and votes"
-    )
+    gr.Markdown("#### Figure 1: Number of model calls and votes")
     plot_1 = gr.Plot(show_label=False)
     with gr.Row():
         with gr.Column():
@@ -133,7 +125,7 @@ def build_leaderboard_tab(elo_results_file):
 
     leader_component_values[:] = [md, p1, p2, p3, p4]
 
-    md_1 = gr.Markdown(md)
+    md_1 = gr.Markdown(md, elem_id="leaderboard_markdown")
     gr.Markdown(
         f"""## More Statistics\n
 We added some additional figures to show more statistics. The code for generating them is also included in this [notebook]({notebook_url}).

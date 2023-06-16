@@ -26,13 +26,13 @@ class Conversation:
 
     # The name of this template
     name: str
-    # The System prompt
+    # The system prompt
     system: str
     # Two roles
     roles: List[str]
-    # All messages
+    # All messages. Each item is (role, message).
     messages: List[List[str]]
-    # Offset of few shot examples
+    # The number of few shot examples
     offset: int
     # Separators
     sep_style: SeparatorStyle
@@ -70,14 +70,6 @@ class Conversation:
                 else:
                     ret += role + ": "  # must be end with a space
             return ret
-        elif self.sep_style == SeparatorStyle.NO_COLON_SINGLE:
-            ret = self.system
-            for role, message in self.messages:
-                if message:
-                    ret += role + message + self.sep
-                else:
-                    ret += role
-            return ret
         elif self.sep_style == SeparatorStyle.ADD_NEW_LINE_SINGLE:
             ret = self.system + self.sep
             for role, message in self.messages:
@@ -86,16 +78,13 @@ class Conversation:
                 else:
                     ret += role + "\n"
             return ret
-        elif self.sep_style == SeparatorStyle.DOLLY:
-            seps = [self.sep, self.sep2]
+        elif self.sep_style == SeparatorStyle.NO_COLON_SINGLE:
             ret = self.system
-            for i, (role, message) in enumerate(self.messages):
+            for role, message in self.messages:
                 if message:
-                    ret += role + ":\n" + message + seps[i % 2]
-                    if i % 2 == 1:
-                        ret += "\n\n"
+                    ret += role + message + self.sep
                 else:
-                    ret += role + ":\n"
+                    ret += role
             return ret
         elif self.sep_style == SeparatorStyle.RWKV:
             ret = self.system
@@ -109,6 +98,17 @@ class Conversation:
                     ret += "\n\n"
                 else:
                     ret += role + ":"
+            return ret
+        elif self.sep_style == SeparatorStyle.DOLLY:
+            seps = [self.sep, self.sep2]
+            ret = self.system
+            for i, (role, message) in enumerate(self.messages):
+                if message:
+                    ret += role + ":\n" + message + seps[i % 2]
+                    if i % 2 == 1:
+                        ret += "\n\n"
+                else:
+                    ret += role + ":\n"
             return ret
         elif self.sep_style == SeparatorStyle.PHOENIX:
             ret = self.system
@@ -125,8 +125,16 @@ class Conversation:
         """Append a new message."""
         self.messages.append([role, message])
 
+    def update_last_message(self, message: str):
+        """Update the last output.
+
+        The last message is typically set to be None when constructing the prompt,
+        so we need to update it in-place after getting the response from a model.
+        """
+        self.messages[-1][1] = message
+
     def to_gradio_chatbot(self):
-        """Convert the history to gradio chatbot format"""
+        """Convert the conversation to gradio chatbot format."""
         ret = []
         for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
@@ -163,7 +171,7 @@ class Conversation:
 
     def dict(self):
         return {
-            "name": self.name,
+            "template_name": self.name,
             "system": self.system,
             "roles": self.roles,
             "messages": self.messages,
@@ -187,7 +195,7 @@ def get_conv_template(name: str) -> Conversation:
     return conv_templates[name].copy()
 
 
-# A template with one conversation example
+# A template with a one-shot conversation example
 register_conv_template(
     Conversation(
         name="one_shot",
@@ -197,31 +205,38 @@ register_conv_template(
         messages=(
             (
                 "Human",
-                "What are the key differences between renewable and non-renewable energy sources?",
+                "Got any creative ideas for a 10 year old’s birthday?",
             ),
             (
                 "Assistant",
-                "Renewable energy sources are those that can be replenished naturally in a relatively "
-                "short amount of time, such as solar, wind, hydro, geothermal, and biomass. "
-                "Non-renewable energy sources, on the other hand, are finite and will eventually be "
-                "depleted, such as coal, oil, and natural gas. Here are some key differences between "
-                "renewable and non-renewable energy sources:\n"
-                "1. Availability: Renewable energy sources are virtually inexhaustible, while non-renewable "
-                "energy sources are finite and will eventually run out.\n"
-                "2. Environmental impact: Renewable energy sources have a much lower environmental impact "
-                "than non-renewable sources, which can lead to air and water pollution, greenhouse gas emissions, "
-                "and other negative effects.\n"
-                "3. Cost: Renewable energy sources can be more expensive to initially set up, but they typically "
-                "have lower operational costs than non-renewable sources.\n"
-                "4. Reliability: Renewable energy sources are often more reliable and can be used in more remote "
-                "locations than non-renewable sources.\n"
-                "5. Flexibility: Renewable energy sources are often more flexible and can be adapted to different "
-                "situations and needs, while non-renewable sources are more rigid and inflexible.\n"
-                "6. Sustainability: Renewable energy sources are more sustainable over the long term, while "
-                "non-renewable sources are not, and their depletion can lead to economic and social instability.",
+                """Of course! Here are some creative ideas for a 10-year-old's birthday party:
+1. Treasure Hunt: Organize a treasure hunt in your backyard or nearby park. Create clues and riddles for the kids to solve, leading them to hidden treasures and surprises.
+2. Science Party: Plan a science-themed party where kids can engage in fun and interactive experiments. You can set up different stations with activities like making slime, erupting volcanoes, or creating simple chemical reactions.
+3. Outdoor Movie Night: Set up a backyard movie night with a projector and a large screen or white sheet. Create a cozy seating area with blankets and pillows, and serve popcorn and snacks while the kids enjoy a favorite movie under the stars.
+4. DIY Crafts Party: Arrange a craft party where kids can unleash their creativity. Provide a variety of craft supplies like beads, paints, and fabrics, and let them create their own unique masterpieces to take home as party favors.
+5. Sports Olympics: Host a mini Olympics event with various sports and games. Set up different stations for activities like sack races, relay races, basketball shooting, and obstacle courses. Give out medals or certificates to the participants.
+6. Cooking Party: Have a cooking-themed party where the kids can prepare their own mini pizzas, cupcakes, or cookies. Provide toppings, frosting, and decorating supplies, and let them get hands-on in the kitchen.
+7. Superhero Training Camp: Create a superhero-themed party where the kids can engage in fun training activities. Set up an obstacle course, have them design their own superhero capes or masks, and organize superhero-themed games and challenges.
+8. Outdoor Adventure: Plan an outdoor adventure party at a local park or nature reserve. Arrange activities like hiking, nature scavenger hunts, or a picnic with games. Encourage exploration and appreciation for the outdoors.
+Remember to tailor the activities to the birthday child's interests and preferences. Have a great celebration!""",
             ),
         ),
         offset=2,
+        sep_style=SeparatorStyle.ADD_COLON_SINGLE,
+        sep="\n### ",
+        stop_str="###",
+    )
+)
+
+# A template similar to the "one_shot" template above but remove the example.
+register_conv_template(
+    Conversation(
+        name="zero_shot",
+        system="A chat between a curious human and an artificial intelligence assistant. "
+        "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+        roles=("Human", "Assistant"),
+        messages=(),
+        offset=0,
         sep_style=SeparatorStyle.ADD_COLON_SINGLE,
         sep="\n### ",
         stop_str="###",
@@ -254,6 +269,19 @@ register_conv_template(
         sep_style=SeparatorStyle.ADD_COLON_TWO,
         sep=" ",
         sep2="</s>",
+    )
+)
+
+# Alpaca default template
+register_conv_template(
+    Conversation(
+        name="alpaca",
+        system="Below is an instruction that describes a task. Write a response that appropriately completes the request.",
+        roles=("### Instruction", "### Response"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.ADD_COLON_SINGLE,
+        sep="\n\n",
     )
 )
 
@@ -474,6 +502,35 @@ register_conv_template(
         offset=0,
         sep_style=SeparatorStyle.NO_COLON_SINGLE,
         sep="</s>",
+    )
+)
+
+# Snoozy default template
+# Reference: https://github.com/nomic-ai/gpt4all/blob/d4861030b778da6db59d21d2927a4aba4f9f1f43/gpt4all-bindings/python/gpt4all/gpt4all.py#L232
+register_conv_template(
+    Conversation(
+        name="snoozy",
+        system="### Instruction:\nThe prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.",
+        roles=("### Prompt", "### Response"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.ADD_COLON_SINGLE,
+        sep="\n",
+        stop_str="###",
+    )
+)
+
+# manticore default template
+register_conv_template(
+    Conversation(
+        name="manticore",
+        system="",
+        roles=("USER", "ASSISTANT"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.ADD_COLON_TWO,
+        sep="\n",
+        sep2="</s>",
     )
 )
 
