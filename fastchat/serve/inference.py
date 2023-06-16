@@ -4,6 +4,7 @@ import gc
 import math
 from typing import Iterable, Optional
 import sys
+import time
 import warnings
 
 import psutil
@@ -29,6 +30,7 @@ from transformers.generation.logits_process import (
 from fastchat.conversation import get_conv_template, SeparatorStyle
 from fastchat.model.model_adapter import load_model, get_conversation_template
 from fastchat.model.chatglm_model import chatglm_generate_stream
+from fastchat.modules.gptq import GptqConfig
 
 
 def prepare_logits_processor(
@@ -190,7 +192,7 @@ def generate_stream(
                                 break
                 else:
                     raise ValueError("Invalid stop field type.")
-            
+
             # prevent yielding partial stop sequence
             if not partially_stopped:
                 yield {
@@ -256,11 +258,19 @@ def chat_loop(
     repetition_penalty: float,
     max_new_tokens: int,
     chatio: ChatIO,
+    gptq_config: GptqConfig,
     debug: bool,
 ):
     # Model
     model, tokenizer = load_model(
-        model_path, device, num_gpus, max_gpu_memory, load_8bit, cpu_offloading, debug
+        model_path,
+        device,
+        num_gpus,
+        max_gpu_memory,
+        load_8bit,
+        cpu_offloading,
+        gptq_config,
+        debug,
     )
     is_chatglm = "chatglm" in str(type(model)).lower()
     is_fastchat_t5 = "t5" in str(type(model)).lower()
@@ -270,19 +280,29 @@ def chat_loop(
         repetition_penalty = 1.2
 
     # Chat
-    if conv_template:
-        conv = get_conv_template(conv_template)
-    else:
-        conv = get_conversation_template(model_path)
+    def new_chat():
+        if conv_template:
+            conv = get_conv_template(conv_template)
+        else:
+            conv = get_conversation_template(model_path)
+        return conv
+
+    conv = new_chat()
 
     while True:
         try:
             inp = chatio.prompt_for_input(conv.roles[0])
         except EOFError:
             inp = ""
-        if not inp:
+
+        if inp == "!!exit" or not inp:
             print("exit...")
             break
+
+        if inp == "!!reset":
+            print("resetting...")
+            conv = new_chat()
+            continue
 
         conv.append_message(conv.roles[0], inp)
         conv.append_message(conv.roles[1], None)
@@ -307,8 +327,17 @@ def chat_loop(
 
         chatio.prompt_for_output(conv.roles[1])
         output_stream = generate_stream_func(model, tokenizer, gen_params, device)
+        t = time.time()
         outputs = chatio.stream_output(output_stream)
-        conv.messages[-1][-1] = outputs.strip()
+        duration = time.time() - t
+        conv.update_last_message(outputs.strip())
 
         if debug:
-            print("\n", {"prompt": prompt, "outputs": outputs}, "\n")
+            num_tokens = len(tokenizer.encode(outputs))
+            msg = {
+                "conv_template": conv.name,
+                "prompt": prompt,
+                "outputs": outputs,
+                "speed (token/s)": round(num_tokens / duration, 2),
+            }
+            print(f"\n{msg}\n")

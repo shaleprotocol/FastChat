@@ -4,6 +4,10 @@ Chat with a model with command line interface.
 Usage:
 python3 -m fastchat.serve.cli --model lmsys/fastchat-t5-3b-v1.0
 python3 -m fastchat.serve.cli --model ~/model_weights/vicuna-7b
+
+Other commands:
+- Type "!!exit" or an empty line to exit.
+- Type "!!reset" to start a new conversation.
 """
 import argparse
 import os
@@ -15,11 +19,12 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.live import Live
+from rich.markdown import Markdown
 
 from fastchat.model.model_adapter import add_model_args
-from fastchat.serve.inference import chat_loop, ChatIO
+from fastchat.modules.gptq import GptqConfig
+from fastchat.serve.inference import ChatIO, chat_loop
 
 
 class SimpleChatIO(ChatIO):
@@ -46,7 +51,7 @@ class RichChatIO(ChatIO):
     def __init__(self):
         self._prompt_session = PromptSession(history=InMemoryHistory())
         self._completer = WordCompleter(
-            words=["!exit", "!reset"], pattern=re.compile("$")
+            words=["!!exit", "!!reset"], pattern=re.compile("$")
         )
         self._console = Console()
 
@@ -169,6 +174,12 @@ def main(args):
             args.repetition_penalty,
             args.max_new_tokens,
             chatio,
+            GptqConfig(
+                ckpt=args.gptq_ckpt or args.model_path,
+                wbits=args.gptq_wbits,
+                groupsize=args.gptq_groupsize,
+                act_order=args.gptq_act_order,
+            ),
             args.debug,
         )
     except KeyboardInterrupt:

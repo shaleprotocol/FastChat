@@ -12,6 +12,7 @@ else:
 
 import psutil
 import torch
+
 from transformers import (
     AutoConfig,
     AutoModel,
@@ -23,6 +24,7 @@ from transformers import (
     T5Tokenizer,
 )
 
+from fastchat.modules.gptq import GptqConfig, load_gptq_quantized
 from fastchat.conversation import Conversation, get_conv_template
 from fastchat.model.compression import load_compress_model
 from fastchat.model.monkey_patch_non_inplace import (
@@ -34,21 +36,31 @@ from fastchat.utils import get_gpu_memory
 class BaseAdapter:
     """The base and the default model adapter."""
 
+    use_fast_tokenizer = False
+
     def match(self, model_path: str):
         return True
 
     def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path, use_fast=self.use_fast_tokenizer
+        )
         model = AutoModelForCausalLM.from_pretrained(
             model_path, low_cpu_mem_usage=True, **from_pretrained_kwargs
         )
         return model, tokenizer
+
+    def load_compress_model(self, model_path, device, torch_dtype):
+        return load_compress_model(
+            model_path, device, torch_dtype, use_fast=self.use_fast_tokenizer
+        )
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("one_shot")
 
 
 # A global registry for all model adapters
+# TODO (lmzheng): make it a priority queue.
 model_adapters: List[BaseAdapter] = []
 
 
@@ -99,9 +111,13 @@ def load_model(
     max_gpu_memory: Optional[str] = None,
     load_8bit: bool = False,
     cpu_offloading: bool = False,
+    gptq_config: Optional[GptqConfig] = None,
     debug: bool = False,
 ):
     """Load a model from Hugging Face."""
+
+    # get model adapter
+    adapter = get_model_adapter(model_path)
 
     # Handle device mapping
     cpu_offloading = raise_warning_for_incompatible_cpu_offloading_configuration(
@@ -129,6 +145,15 @@ def load_model(
         kwargs = {"torch_dtype": torch.float16}
         # Avoid bugs in mps backend by not using in-place operations.
         replace_llama_attn_with_non_inplace_operations()
+    elif device == "xpu":
+        kwargs = {"torch_dtype": torch.bfloat16}
+        # Try to load ipex, while it looks unused, it links into torch for xpu support
+        try:
+            import intel_extension_for_pytorch as ipex
+        except ImportError:
+            warnings.warn(
+                "Intel Extension for PyTorch is not installed, but is required for xpu inference."
+            )
     else:
         raise ValueError(f"Invalid device: {device}")
 
@@ -150,9 +175,15 @@ def load_model(
                 "8-bit quantization is not supported for multi-gpu inference."
             )
         else:
-            return load_compress_model(
+            return adapter.load_compress_model(
                 model_path=model_path, device=device, torch_dtype=kwargs["torch_dtype"]
             )
+    elif gptq_config and gptq_config.wbits < 16:
+        return load_gptq_quantized(
+            model_path,
+            gptq_config,
+            device=device,
+        )
 
     # Load model
     adapter = get_model_adapter(model_path)
@@ -160,6 +191,11 @@ def load_model(
 
     if (device == "cuda" and num_gpus == 1 and not cpu_offloading) or device == "mps":
         model.to(device)
+
+    elif device == "xpu":
+        model.eval()
+        model = model.to("xpu")
+        model = torch.xpu.optimize(model, dtype=torch.bfloat16, inplace=True)
 
     if debug:
         print(model)
@@ -182,7 +218,7 @@ def add_model_args(parser):
     parser.add_argument(
         "--device",
         type=str,
-        choices=["cpu", "cuda", "mps"],
+        choices=["cpu", "cuda", "mps", "xpu"],
         default="cuda",
         help="The device type",
     )
@@ -206,6 +242,37 @@ def add_model_args(parser):
         action="store_true",
         help="Only when using 8-bit quantization: Offload excess weights to the CPU that don't fit on the GPU",
     )
+    parser.add_argument(
+        "--gptq-ckpt",
+        type=str,
+        default=None,
+        help="Load quantized model. The path to the local GPTQ checkpoint.",
+    )
+    parser.add_argument(
+        "--gptq-wbits",
+        type=int,
+        default=16,
+        choices=[2, 3, 4, 8, 16],
+        help="#bits to use for quantization",
+    )
+    parser.add_argument(
+        "--gptq-groupsize",
+        type=int,
+        default=-1,
+        help="Groupsize to use for quantization; default uses full row.",
+    )
+    parser.add_argument(
+        "--gptq-act-order",
+        action="store_true",
+        help="Whether to apply the activation order GPTQ heuristic",
+    )
+
+
+def remove_parent_directory_name(model_path):
+    """Remove parent directory name."""
+    if model_path[-1] == "/":
+        model_path = model_path[:-1]
+    return model_path.split("/")[-1]
 
 
 class FalconAdapter(BaseAdapter):
@@ -228,6 +295,22 @@ class FalconAdapter(BaseAdapter):
         return get_conv_template("vicuna_v1.1")
 
 
+class CodeT5Adapter(BaseAdapter):
+    """The model adapter for Salesforce/codet5p-16b"""
+
+    def match(self, model_path: str):
+        return "codet5p" in model_path
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True)
+        return model, tokenizer
+
+
 class VicunaAdapter(BaseAdapter):
     "Model adapater for vicuna-v1.1"
 
@@ -245,6 +328,8 @@ class VicunaAdapter(BaseAdapter):
         return model, tokenizer
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
+        if "v0" in remove_parent_directory_name(model_path):
+            return get_conv_template("one_shot")
         return get_conv_template("vicuna_v1.1")
 
     def raise_warning_for_old_weights(self, model):
@@ -283,6 +368,16 @@ class KoalaAdapter(BaseAdapter):
         return get_conv_template("koala_v1")
 
 
+class AlpacaAdapter(BaseAdapter):
+    """The model adapter for alpaca."""
+
+    def match(self, model_path: str):
+        return "alpaca" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("alpaca")
+
+
 class ChatGLMAdapter(BaseAdapter):
     """The model adapter for THUDM/chatglm-6b"""
 
@@ -299,6 +394,8 @@ class ChatGLMAdapter(BaseAdapter):
 
 class DollyV2Adapter(BaseAdapter):
     """The model adapter for databricks/dolly-v2-12b"""
+
+    use_fast_tokenizer = True
 
     def match(self, model_path: str):
         return "dolly-v2" in model_path
@@ -321,17 +418,10 @@ class DollyV2Adapter(BaseAdapter):
 class OasstPythiaAdapter(BaseAdapter):
     """The model adapter for OpenAssistant/oasst-sft-1-pythia-12b"""
 
+    use_fast_tokenizer = True
+
     def match(self, model_path: str):
         return "oasst" in model_path and "pythia" in model_path
-
-    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            low_cpu_mem_usage=True,
-            **from_pretrained_kwargs,
-        )
-        return model, tokenizer
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("oasst_pythia")
@@ -340,17 +430,10 @@ class OasstPythiaAdapter(BaseAdapter):
 class StableLMAdapter(BaseAdapter):
     """The model adapter for StabilityAI/stablelm-tuned-alpha-7b"""
 
+    use_fast_tokenizer = True
+
     def match(self, model_path: str):
         return "stablelm" in model_path
-
-    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            low_cpu_mem_usage=True,
-            **from_pretrained_kwargs,
-        )
-        return model, tokenizer
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("stablelm")
@@ -358,6 +441,8 @@ class StableLMAdapter(BaseAdapter):
 
 class MPTAdapter(BaseAdapter):
     """The model adapter for mosaicml/mpt-7b-chat"""
+
+    use_fast_tokenizer = True
 
     def match(self, model_path: str):
         return "mpt" in model_path
@@ -391,6 +476,8 @@ class BaizeAdapter(BaseAdapter):
 
 class RwkvAdapter(BaseAdapter):
     """The model adapter for BlinkDL/RWKV-4-Raven"""
+
+    use_fast_tokenizer = True
 
     def match(self, model_path: str):
         return "RWKV-4" in model_path
@@ -433,17 +520,10 @@ class OpenBuddyAdapter(BaseAdapter):
 class PhoenixAdapter(BaseAdapter):
     """The model adapter for FreedomIntelligence/phoenix-inst-chat-7b"""
 
+    use_fast_tokenizer = True
+
     def match(self, model_path: str):
         return "phoenix" in model_path
-
-    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            low_cpu_mem_usage=True,
-            **from_pretrained_kwargs,
-        )
-        return model, tokenizer
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("phoenix")
@@ -480,6 +560,19 @@ class BardAdapter(BaseAdapter):
 
     def match(self, model_path: str):
         return model_path == "bard"
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        raise NotImplementedError()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("bard")
+
+
+class PaLM2Adapter(BaseAdapter):
+    """The model adapter for PaLM2."""
+
+    def match(self, model_path: str):
+        return model_path == "palm-2"
 
     def load_model(self, model_path: str, from_pretrained_kwargs: dict):
         raise NotImplementedError()
@@ -527,12 +620,79 @@ class H2OGPTAdapter(BaseAdapter):
         return get_conv_template("h2ogpt")
 
 
+class SnoozyAdapter(BaseAdapter):
+    """The model adapter for nomic-ai/gpt4all-13b-snoozy"""
+
+    def match(self, model_path: str):
+        return "gpt4all" in model_path and "snoozy" in model_path
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("snoozy")
+
+
+class WizardLMAdapter(BaseAdapter):
+    """The model adapter for WizardLM/WizardLM-13B-V1.0"""
+
+    def match(self, model_path: str):
+        return "wizardlm" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        model_path = model_path.lower()
+        if "13b" in model_path or "30b" in model_path:
+            return get_conv_template("vicuna_v1.1")
+        else:
+            # TODO: use the recommended template for 7B
+            # (https://huggingface.co/WizardLM/WizardLM-13B-V1.0)
+            return get_conv_template("one_shot")
+
+
+class ManticoreAdapter(BaseAdapter):
+    """The model adapter for Manticore."""
+
+    def match(self, model_path: str):
+        return "manticore" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("manticore")
+
+
+class GuanacoAdapter(BaseAdapter):
+    """The model adapter for timdettmers/guanaco-33b-merged"""
+
+    def match(self, model_path: str):
+        return "guanaco" in model_path
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, low_cpu_mem_usage=True, **from_pretrained_kwargs
+        )
+        # Fix a bug in tokenizer config
+        tokenizer.eos_token_id = model.config.eos_token_id
+        return model, tokenizer
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("zero_shot")
+
+
+class CamelAdapter(BaseAdapter):
+    """The model adapter for camel"""
+
+    def match(self, model_path: str):
+        return "camel" in model_path
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("vicuna_v1.1")
+
+
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
 register_model_adapter(FalconAdapter)
+register_model_adapter(CodeT5Adapter)
 register_model_adapter(VicunaAdapter)
 register_model_adapter(T5Adapter)
 register_model_adapter(KoalaAdapter)
+register_model_adapter(AlpacaAdapter)
 register_model_adapter(ChatGLMAdapter)
 register_model_adapter(DollyV2Adapter)
 register_model_adapter(OasstPythiaAdapter)
@@ -542,12 +702,19 @@ register_model_adapter(RwkvAdapter)
 register_model_adapter(OpenBuddyAdapter)
 register_model_adapter(PhoenixAdapter)
 register_model_adapter(BardAdapter)
+register_model_adapter(PaLM2Adapter)
 register_model_adapter(ChatGPTAdapter)
 register_model_adapter(ClaudeAdapter)
 register_model_adapter(MPTAdapter)
 register_model_adapter(BiLLaAdapter)
 register_model_adapter(RedPajamaINCITEAdapter)
 register_model_adapter(H2OGPTAdapter)
+register_model_adapter(SnoozyAdapter)
+register_model_adapter(WizardLMAdapter)
+register_model_adapter(ManticoreAdapter)
+register_model_adapter(GuanacoAdapter)
+register_model_adapter(CamelAdapter)
+
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseAdapter)
