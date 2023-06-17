@@ -344,7 +344,7 @@ async def get_conv(model_name: str):
         return conv_template
 
 
-@app.get("/v1/models", dependencies=[Depends(check_api_key)])
+@app.get("/v1/models")
 async def show_available_models():
     controller_address = app_settings.controller_address
     async with httpx.AsyncClient() as client:
@@ -359,7 +359,7 @@ async def show_available_models():
     return ModelList(data=model_cards)
 
 
-@app.post("/v1/chat/completions", dependencies=[Depends(check_api_key)])
+@app.post("/v1/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest):
     """Creates a completion for the chat message"""
     error_check_ret = await check_model(request)
@@ -519,7 +519,7 @@ async def chat_completion(
         return output
 
 
-@app.post("/v1/completions", dependencies=[Depends(check_api_key)])
+@app.post("/v1/completions")
 async def create_completion(request: CompletionRequest):
     error_check_ret = await check_model(request)
     if error_check_ret is not None:
@@ -668,8 +668,8 @@ async def generate_completion(payload: Dict[str, Any]):
         return completion
 
 
-@app.post("/v1/embeddings", dependencies=[Depends(check_api_key)])
-@app.post("/v1/engines/{model_name}/embeddings", dependencies=[Depends(check_api_key)])
+@app.post("/v1/embeddings")
+@app.post("/v1/engines/{model_name}/embeddings")
 async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     """Creates embeddings for the text"""
     if request.model is None:
