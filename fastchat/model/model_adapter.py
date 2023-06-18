@@ -305,7 +305,7 @@ class CodeT5Adapter(BaseAdapter):
         tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_path,
-            #torch_dtype=torch.float16,
+            torch_dtype=torch.float16,
             low_cpu_mem_usage=True,
             trust_remote_code=True)
         return model, tokenizer
