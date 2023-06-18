@@ -274,9 +274,9 @@ def remove_parent_directory_name(model_path):
         model_path = model_path[:-1]
     return model_path.split("/")[-1]
 
-
+###### Shale
 class FalconAdapter(BaseAdapter):
-    "Model adapater for Falcon-40b"
+    "Model adapater for Falcon-7b/40b"
 
     def match(self, model_path: str):
         return "falcon" in model_path
@@ -286,13 +286,10 @@ class FalconAdapter(BaseAdapter):
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             low_cpu_mem_usage=True,
-            trust_remote_code=True,  # Shale
+            trust_remote_code=True,
             **from_pretrained_kwargs,
         )
         return model, tokenizer
-
-    def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("vicuna_v1.1")
 
 
 class CodeT5Adapter(BaseAdapter):
@@ -309,7 +306,7 @@ class CodeT5Adapter(BaseAdapter):
             low_cpu_mem_usage=True,
             trust_remote_code=True)
         return model, tokenizer
-
+######
 
 class VicunaAdapter(BaseAdapter):
     "Model adapater for vicuna-v1.1"
