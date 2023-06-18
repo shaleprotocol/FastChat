@@ -291,6 +291,9 @@ class FalconAdapter(BaseAdapter):
         )
         return model, tokenizer
 
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("zero_shot")
+
 
 class CodeT5Adapter(BaseAdapter):
     """The model adapter for Salesforce/codet5p-16b"""
