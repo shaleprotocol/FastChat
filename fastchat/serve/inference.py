@@ -101,12 +101,15 @@ def generate_stream(
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
+                # Shale: special for CodeT5+.
+                # optionally project encoder_hidden_states
+                encoder_output = model.enc_to_dec_proj(encoder_output)
+
                 out = model.decoder(
                     input_ids=start_ids,
                     encoder_hidden_states=encoder_output,
-                    use_cache=True,
                 )
-                logits = model.lm_head(out[0])
+                logits = out[0]
             else:
                 out = model(torch.as_tensor([input_ids], device=device), use_cache=True)
                 logits = out.logits
@@ -116,11 +119,8 @@ def generate_stream(
                 out = model.decoder(
                     input_ids=torch.as_tensor([[token]], device=device),
                     encoder_hidden_states=encoder_output,
-                    use_cache=True,
-                    past_key_values=past_key_values,
                 )
-
-                logits = model.lm_head(out[0])
+                logits = out[0]
             else:
                 out = model(
                     input_ids=torch.as_tensor([[token]], device=device),
