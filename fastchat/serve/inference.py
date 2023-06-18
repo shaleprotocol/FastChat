@@ -18,6 +18,7 @@ from transformers import (
     AutoModelForSeq2SeqLM,
     T5Tokenizer,
     AutoConfig,
+    TextIteratorStreamer
 )
 from transformers.generation.logits_process import (
     LogitsProcessorList,
@@ -34,6 +35,7 @@ from fastchat.model.falcon_model import falcon_generate_stream
 from fastchat.modules.gptq import GptqConfig
 from fastchat.utils import is_partial_stop
 
+from threading import Thread
 
 def prepare_logits_processor(
     temperature: float, repetition_penalty: float, top_p: float, top_k: int
@@ -66,6 +68,57 @@ def generate_stream(
     echo = bool(params.get("echo", True))
     stop_token_ids = params.get("stop_token_ids", None) or []
     stop_token_ids.append(tokenizer.eos_token_id)
+
+    # hacking for GenerationMixin process
+    if 'codet5' in model.config._name_or_path:
+        max_new_tokens = min(max_new_tokens, 128)
+        prompt = prompt.split('###')[-2].split(': ')[1]
+        streamer = TextIteratorStreamer(tokenizer)
+        input_ids = tokenizer(prompt).input_ids
+        input_echo_len = len(input_ids)
+        encoding = tokenizer(prompt, return_tensors='pt').to(device)
+        encoding['decoder_input_ids'] = encoding['input_ids'].clone()
+        gen_kwargs = dict(**encoding, 
+            streamer=streamer, 
+            max_new_tokens=max_new_tokens)
+        thread = Thread(target=model.generate, kwargs=gen_kwargs)
+        thread.start()
+        i = 0
+        output = ''
+        for new_text in streamer:
+            i += 1
+            if new_text == '\n':
+                break
+            output += new_text
+            if i % stream_interval == 0 or i == max_new_tokens - 1:
+                yield {
+                    "text": output,
+                    "usage": {
+                        "prompt_tokens": input_echo_len,
+                        "completion_tokens": i,
+                        "total_tokens": input_echo_len + i,
+                    },
+                    "finish_reason": None,
+                }
+            if i >= max_new_tokens:
+                break
+
+        if i >= max_new_tokens:
+            finish_reason = "length"
+        else:
+            finish_reason = "stop"
+
+        yield {
+            "text": output,
+            "usage": {
+                "prompt_tokens": input_echo_len,
+                "completion_tokens": i,
+                "total_tokens": input_echo_len + i,
+            },
+            "finish_reason": finish_reason,
+        }
+        thread.join()
+        return
 
     logits_processor = prepare_logits_processor(
         temperature, repetition_penalty, top_p, top_k
