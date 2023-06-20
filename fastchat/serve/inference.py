@@ -100,6 +100,7 @@ def generate_stream(
         # optionally project encoder_hidden_states
         encoder_output = model.enc_to_dec_proj(encoder_output)
 
+        # 50526 is decoder_start_token_id missing in 6b.
         output_ids = output_ids + [50256]
 
     past_key_values = out = None
