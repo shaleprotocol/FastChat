@@ -96,18 +96,14 @@ def generate_stream(
         # optionally project encoder_hidden_states
         encoder_output = model.enc_to_dec_proj(encoder_output)
 
-        start_ids = torch.as_tensor(
-            [[model.generation_config.decoder_start_token_id]],
-            dtype=torch.int64,
-            device=device,
-        )
+        output_ids = output_ids + [model.generation_config.decoder_start_token_id]
 
     past_key_values = out = None
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
                 out = model.decoder(
-                    input_ids=start_ids,
+                    input_ids=torch.as_tensor([output_ids[input_echo_len:]], device=device),
                     encoder_hidden_states=encoder_output,
                 )
                 logits = out.logits
