@@ -100,7 +100,7 @@ def generate_stream(
         # optionally project encoder_hidden_states
         encoder_output = model.enc_to_dec_proj(encoder_output)
 
-        output_ids = output_ids + [model.generation_config.decoder_start_token_id]
+        output_ids = output_ids + [50256]
 
     past_key_values = out = None
     for i in range(max_new_tokens):
