@@ -92,6 +92,8 @@ def generate_stream(
         output = ''
         for new_text in streamer:
             i += 1
+            if new_text == '\n':
+                break
             output += new_text
             if i % stream_interval == 0 or i == max_new_tokens - 1:
                 yield {
