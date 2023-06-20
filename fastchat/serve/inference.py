@@ -77,6 +77,10 @@ def generate_stream(
     )
 
     input_ids = tokenizer(prompt).input_ids
+
+    print('input_ids')
+    print(input_ids)
+
     input_echo_len = len(input_ids)
     output_ids = list(input_ids)
 
@@ -102,6 +106,11 @@ def generate_stream(
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
+
+                print('output_ids')
+                print(output_ids)
+                print(output_ids[len(input_ids):])
+
                 out = model.decoder(
                     input_ids=torch.as_tensor([output_ids[len(input_ids):]], device=device),
                     encoder_hidden_states=encoder_output,
