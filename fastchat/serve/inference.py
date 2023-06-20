@@ -103,7 +103,7 @@ def generate_stream(
         if i == 0:
             if model.config.is_encoder_decoder:
                 out = model.decoder(
-                    input_ids=torch.as_tensor([output_ids[input_echo_len:]], device=device),
+                    input_ids=torch.as_tensor([output_ids[len(input_ids):]], device=device),
                     encoder_hidden_states=encoder_output,
                 )
                 logits = out.logits
@@ -126,7 +126,7 @@ def generate_stream(
                 # )
 
                 out = model.decoder(
-                    input_ids=torch.as_tensor([output_ids[input_echo_len:]], device=device),
+                    input_ids=torch.as_tensor([output_ids[len(input_ids):]], device=device),
                     encoder_hidden_states=encoder_output,
                 )
                 logits = out.logits
