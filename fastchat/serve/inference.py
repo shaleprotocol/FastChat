@@ -91,6 +91,11 @@ def generate_stream(
         encoder_output = model.encoder(
             input_ids=torch.as_tensor([input_ids], device=device)
         )[0]
+
+        # Shale: special for CodeT5+.
+        # optionally project encoder_hidden_states
+        encoder_output = model.enc_to_dec_proj(encoder_output)
+
         start_ids = torch.as_tensor(
             [[model.generation_config.decoder_start_token_id]],
             dtype=torch.int64,
@@ -101,26 +106,34 @@ def generate_stream(
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
-                # Shale: special for CodeT5+.
-                # optionally project encoder_hidden_states
-                encoder_output = model.enc_to_dec_proj(encoder_output)
-
                 out = model.decoder(
                     input_ids=start_ids,
                     encoder_hidden_states=encoder_output,
                 )
-                logits = out[0]
+                logits = out.logits
             else:
                 out = model(torch.as_tensor([input_ids], device=device), use_cache=True)
                 logits = out.logits
             past_key_values = out.past_key_values
         else:
             if model.config.is_encoder_decoder:
+                
+                # for i in past_key_values:
+                #     for j in i:
+                #         print(j.shape)
+
+                # params = model.decoder.prepare_inputs_for_generation(
+                #     input_ids=torch.as_tensor([[token]], device=device),
+                #     # use_cache=True,
+                #     # past_key_values=past_key_values,
+                #     encoder_hidden_states=encoder_output,
+                # )
+
                 out = model.decoder(
-                    input_ids=torch.as_tensor([[token]], device=device),
+                    input_ids=torch.as_tensor([output_ids[input_echo_len:]], device=device),
                     encoder_hidden_states=encoder_output,
                 )
-                logits = out[0]
+                logits = out.logits
             else:
                 out = model(
                     input_ids=torch.as_tensor([[token]], device=device),
