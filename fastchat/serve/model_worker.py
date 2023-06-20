@@ -197,37 +197,25 @@ class ModelWorker:
         return {"conv": self.conv}
 
     def generate_stream_gate(self, params):
-        try:
-            for output in self.generate_stream_func(
-                self.model,
-                self.tokenizer,
-                params,
-                self.device,
-                self.context_len,
-                args.stream_interval,
-            ):
-                ret = {
-                    "text": output["text"],
-                    "error_code": 0,
-                }
-                if "usage" in output:
-                    ret["usage"] = output["usage"]
-                if "finish_reason" in output:
-                    ret["finish_reason"] = output["finish_reason"]
-                if "logprobs" in output:
-                    ret["logprobs"] = output["logprobs"]
-                yield json.dumps(ret).encode() + b"\0"
-        except torch.cuda.OutOfMemoryError as e:
+
+        for output in self.generate_stream_func(
+            self.model,
+            self.tokenizer,
+            params,
+            self.device,
+            self.context_len,
+            args.stream_interval,
+        ):
             ret = {
-                "text": f"{SERVER_ERROR_MSG}\n\n({e})",
-                "error_code": ErrorCode.CUDA_OUT_OF_MEMORY,
+                "text": output["text"],
+                "error_code": 0,
             }
-            yield json.dumps(ret).encode() + b"\0"
-        except (ValueError, RuntimeError) as e:
-            ret = {
-                "text": f"{SERVER_ERROR_MSG}\n\n({e})",
-                "error_code": ErrorCode.INTERNAL_ERROR,
-            }
+            if "usage" in output:
+                ret["usage"] = output["usage"]
+            if "finish_reason" in output:
+                ret["finish_reason"] = output["finish_reason"]
+            if "logprobs" in output:
+                ret["logprobs"] = output["logprobs"]
             yield json.dumps(ret).encode() + b"\0"
 
     def generate_gate(self, params):
