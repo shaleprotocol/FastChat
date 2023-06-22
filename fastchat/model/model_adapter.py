@@ -293,7 +293,7 @@ def remove_parent_directory_name(model_path):
     return model_path.split("/")[-1]
 
 ###### Shale
-class FalconAdapter(BaseAdapter):
+class FalconAdapter(BaseModelAdapter):
     "Model adapater for Falcon-7b/40b"
 
     def match(self, model_path: str):
@@ -313,7 +313,7 @@ class FalconAdapter(BaseAdapter):
         return get_conv_template("zero_shot")
 
 
-class CodeT5Adapter(BaseAdapter):
+class CodeT5Adapter(BaseModelAdapter):
     """The model adapter for Salesforce/codet5p-16b"""
 
     def match(self, model_path: str):
