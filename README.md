@@ -5,6 +5,3 @@ This is a fork by Shale Protocol to build a massive production LLMs inference in
 See more at https://shaleprotocol.com
 
 Thanks to lmsys team❤️
-
-
-
