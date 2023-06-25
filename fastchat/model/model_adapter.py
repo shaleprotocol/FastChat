@@ -311,22 +311,6 @@ class FalconAdapter(BaseModelAdapter):
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("zero_shot")
-
-
-class CodeT5Adapter(BaseModelAdapter):
-    """The model adapter for Salesforce/codet5p-16b"""
-
-    def match(self, model_path: str):
-        return "codet5p" in model_path
-
-    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-        model = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True)
-        return model, tokenizer
 ######
 
 class VicunaAdapter(BaseModelAdapter):
@@ -363,6 +347,27 @@ class VicunaAdapter(BaseModelAdapter):
                 "2. Use the old conversation template by `python3 -m fastchat.serve.cli --model-path /path/to/vicuna-v0 --conv-template conv_one_shot`\n"
                 "3. Downgrade fschat to fschat==0.1.10 (Not recommonded).\n"
             )
+
+
+class CodeT5pAdapter(BaseModelAdapter):
+    """The model adapter for Salesforce/codet5p-16b"""
+
+    def match(self, model_path: str):
+        return "codet5p" in model_path
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        config = AutoConfig.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_path,
+            config=config,
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True)
+        return model, tokenizer
 
 
 class T5Adapter(BaseModelAdapter):
@@ -865,12 +870,11 @@ class BaichuanAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("one_shot")
 
-
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
 register_model_adapter(FalconAdapter)
-register_model_adapter(CodeT5Adapter)
 register_model_adapter(VicunaAdapter)
+register_model_adapter(CodeT5pAdapter)
 register_model_adapter(T5Adapter)
 register_model_adapter(KoalaAdapter)
 register_model_adapter(AlpacaAdapter)

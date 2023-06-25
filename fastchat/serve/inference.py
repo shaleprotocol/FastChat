@@ -34,6 +34,7 @@ from fastchat.conversation import get_conv_template, SeparatorStyle
 from fastchat.model.model_adapter import load_model, get_conversation_template
 from fastchat.model.chatglm_model import chatglm_generate_stream
 from fastchat.model.falcon_model import falcon_generate_stream
+from fastchat.model.codet5p_model import codet5p_generate_stream
 from fastchat.modules.gptq import GptqConfig
 from fastchat.utils import is_partial_stop
 
@@ -70,70 +71,6 @@ def generate_stream(
     echo = bool(params.get("echo", True))
     stop_token_ids = params.get("stop_token_ids", None) or []
     stop_token_ids.append(tokenizer.eos_token_id)
-
-
-    # hacking for GenerationMixin process
-    if 'codet5' in model.config._name_or_path:
-        class CodeBlockStopper(StoppingCriteria):
-            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-                # Code-completion is open-ended generation.
-                # We check \n\n to stop at end of a code block.
-                if list(input_ids[0][-2:]) == [198, 50280]:
-                    return True
-                elif input_ids[0][-1] in stop_token_ids:
-                    return True
-
-                print(input_ids[0])
-                return False
-
-        max_new_tokens = min(max_new_tokens, 1280)
-        max_new_tokens = 1280
-        streamer = TextIteratorStreamer(tokenizer)
-        encoding = tokenizer(prompt, return_tensors='pt').to(device)
-        input_ids = encoding.input_ids
-        encoding['decoder_input_ids'] = encoding['input_ids'].clone()
-        input_echo_len = len(input_ids)
-        gen_kwargs = dict(**encoding,
-            streamer=streamer, 
-            max_new_tokens=max_new_tokens,
-            do_sample=False,
-            stopping_criteria=StoppingCriteriaList([CodeBlockStopper()]))
-        thread = Thread(target=model.generate, kwargs=gen_kwargs)
-        thread.start()
-        i = 0
-        output = ''
-        for new_text in streamer:
-            i += 1
-            output += new_text
-            if i % stream_interval == 0 or i == max_new_tokens - 1:
-                yield {
-                    "text": output,
-                    "usage": {
-                        "prompt_tokens": input_echo_len,
-                        "completion_tokens": i,
-                        "total_tokens": input_echo_len + i,
-                    },
-                    "finish_reason": None,
-                }
-            if i >= max_new_tokens:
-                break
-
-        if i >= max_new_tokens:
-            finish_reason = "length"
-        else:
-            finish_reason = "stop"
-
-        yield {
-            "text": output,
-            "usage": {
-                "prompt_tokens": input_echo_len,
-                "completion_tokens": i,
-                "total_tokens": input_echo_len + i,
-            },
-            "finish_reason": finish_reason,
-        }
-        thread.join()
-        return
 
     logits_processor = prepare_logits_processor(
         temperature, repetition_penalty, top_p, top_k
@@ -340,6 +277,7 @@ def chat_loop(
     is_chatglm = "chatglm" in str(type(model)).lower()
     is_t5 = "t5" in str(type(model)).lower()
     is_falcon = "rwforcausallm" in str(type(model)).lower()
+    is_codet5p = "codet5p" in str(type(model)).lower()
 
     # Hardcode T5's default repetition penalty to be 1.2
     if is_t5 and repetition_penalty == 1.0:
@@ -379,11 +317,13 @@ def chat_loop(
         elif is_falcon:
             generate_stream_func = falcon_generate_stream
             prompt = conv.get_prompt()
+        elif is_codet5p:
+            generate_stream_func = codet5p_generate_stream
+            # Codet5p is a code completion model.
+            prompt = inp
         else:
             generate_stream_func = generate_stream
             prompt = conv.get_prompt()
-
-        prompt = inp
 
         gen_params = {
             "model": model_path,
