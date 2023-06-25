@@ -10,6 +10,8 @@ import warnings
 import psutil
 import torch
 from transformers import (
+    StoppingCriteriaList,
+    StoppingCriteria,
     AutoTokenizer,
     AutoModelForCausalLM,
     LlamaTokenizer,
@@ -69,26 +71,39 @@ def generate_stream(
     stop_token_ids = params.get("stop_token_ids", None) or []
     stop_token_ids.append(tokenizer.eos_token_id)
 
+
     # hacking for GenerationMixin process
     if 'codet5' in model.config._name_or_path:
-        max_new_tokens = min(max_new_tokens, 128)
-        prompt = prompt.split('###')[-2].split(': ')[1]
+        class CodeBlockStopper(StoppingCriteria):
+            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+                # Code-completion is open-ended generation.
+                # We check \n\n to stop at end of a code block.
+                if list(input_ids[0][-2:]) == [198, 50280]:
+                    return True
+                elif input_ids[0][-1] in stop_token_ids:
+                    return True
+
+                print(input_ids[0])
+                return False
+
+        max_new_tokens = min(max_new_tokens, 1280)
+        max_new_tokens = 1280
         streamer = TextIteratorStreamer(tokenizer)
-        input_ids = tokenizer(prompt).input_ids
-        input_echo_len = len(input_ids)
         encoding = tokenizer(prompt, return_tensors='pt').to(device)
+        input_ids = encoding.input_ids
         encoding['decoder_input_ids'] = encoding['input_ids'].clone()
-        gen_kwargs = dict(**encoding, 
+        input_echo_len = len(input_ids)
+        gen_kwargs = dict(**encoding,
             streamer=streamer, 
-            max_new_tokens=max_new_tokens)
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+            stopping_criteria=StoppingCriteriaList([CodeBlockStopper()]))
         thread = Thread(target=model.generate, kwargs=gen_kwargs)
         thread.start()
         i = 0
         output = ''
         for new_text in streamer:
             i += 1
-            if new_text == '\n':
-                break
             output += new_text
             if i % stream_interval == 0 or i == max_new_tokens - 1:
                 yield {
