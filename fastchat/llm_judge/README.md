@@ -1,5 +1,5 @@
 # LLM Judge
-| [Paper](https://arxiv.org/abs/2306.05685) | [Demo](https://huggingface.co/spaces/lmsys/mt-bench) | 
+| [Paper](https://arxiv.org/abs/2306.05685) | [Demo](https://huggingface.co/spaces/lmsys/mt-bench) | [Leaderboard](https://chat.lmsys.org/?leaderboard) |
 
 In this package, you can use MT-bench questions and prompts to evaluate your models with LLM-as-a-judge.
 
@@ -13,6 +13,7 @@ In this package, you can use MT-bench questions and prompts to evaluate your mod
 git clone https://github.com/lm-sys/FastChat.git
 cd FastChat
 pip install -e .
+pip install openai anthropic ray
 ```
 
 ## Review Pre-Generated Model Answers and Judgments
