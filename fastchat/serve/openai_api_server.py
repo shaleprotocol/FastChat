@@ -72,7 +72,7 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret, create_invalid_request_response
+from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret, ShaleErrorResponse
 ######
 
 
@@ -104,7 +104,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 def create_error_response(code: int, message: str) -> JSONResponse:
     return JSONResponse(
-        ErrorResponse(message=message, code=code).dict(), status_code=400
+        ShaleErrorResponse(message=message, code=code).dict(), status_code=400
     )
 
 
@@ -347,21 +347,22 @@ async def get_conv(model_name: str):
 
 @app.get("/v1/models/{model}")
 async def retrieve_model(model: str):
-    return JSONResponse({"error": create_invalid_request_response()}, status_code=404)
+    return create_error_response(ErrorCode.INVALID_MODEL, "Shale does not support retrieving models currently")
 
 @app.get("/v1/models")
 async def show_available_models():
-    controller_address = app_settings.controller_address
-    async with httpx.AsyncClient() as client:
-        ret = await client.post(controller_address + "/refresh_all_workers")
-        ret = await client.post(controller_address + "/list_models")
-    models = ret.json()["models"]
-    models.sort()
-    # TODO: return real model permission details
-    model_cards = []
-    for m in models:
-        model_cards.append(ModelCard(id=m, root=m, permission=[ModelPermission()]))
-    return ModelList(data=model_cards)
+    return ModelList(data=[])
+    # controller_address = app_settings.controller_address
+    # async with httpx.AsyncClient() as client:
+    #     #ret = await client.post(controller_address + "/refresh_all_workers")
+    #     ret = await client.post(controller_address + "/list_models")
+    # models = ret.json()["models"]
+    # models.sort()
+    # # TODO: return real model permission details
+    # model_cards = []
+    # for m in models:
+    #     model_cards.append(ModelCard(id=m, root=m, permission=[ModelPermission()]))
+    # return ModelList(data=model_cards)
 
 
 @app.post("/v1/chat/completions")

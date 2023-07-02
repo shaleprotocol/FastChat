@@ -18,8 +18,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import Message
 
-from fastchat.constants import ErrorCode
-
 Base = declarative_base()
 mysql_url = 'mysql://root:mysql_password@mysql/shale'
 engine = create_engine(mysql_url, echo=True)
@@ -32,15 +30,19 @@ first_party_api_limit = 10000000
 
 first_party_users = ['shale', 'chatbot', 'research', 'chrome-plugin']
 
+class ShaleErrorResponse:
+    def __init__(self, message, code):
+        self.error = {
+            "error": {
+                "code": code,
+                "type": "Shale Error Response",
+                "message": message,
+                "param": "",
+            }
+        }
 
-def create_invalid_request_response():
-    error = {
-        "code": ErrorCode.INVALID_MODEL,
-        "type": "Invalid Request Error Response",
-        "message": "Shale does not support retrieving models currently",
-        "param": "",
-    }
-    return error
+    def dict(self):
+        return self.error
 
 def get_shale_secret():
     return shale_admin_secret
