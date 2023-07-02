@@ -72,7 +72,7 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 
-from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret
+from fastchat.shale.shale import RequestLogger, APIKeyChecker, SecretRequest, create_ak, get_shale_secret, create_invalid_request_response
 ######
 
 
@@ -345,6 +345,9 @@ async def get_conv(model_name: str):
             conv_template_map[(worker_addr, model_name)] = conv_template
         return conv_template
 
+@app.get("/v1/models/{model}")
+async def retrieve_model(model: str):
+    return JSONResponse({"error": create_invalid_request_response()}, status_code=404)
 
 @app.get("/v1/models")
 async def show_available_models():
