@@ -12,6 +12,7 @@ import time
 from typing import List, Union
 import threading
 
+import fastapi
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 import numpy as np
