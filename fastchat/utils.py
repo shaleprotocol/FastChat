@@ -144,20 +144,13 @@ def violates_moderation(text):
     """
     Check whether the text violates OpenAI moderation API.
     """
-    url = "https://api.openai.com/v1/moderations"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + os.environ["OPENAI_API_KEY"],
-    }
-    text = text.replace("\n", "")
-    data = "{" + '"input": ' + f'"{text}"' + "}"
-    data = data.encode("utf-8")
+    import openai
+
     try:
-        ret = requests.post(url, headers=headers, data=data, timeout=5)
-        flagged = ret.json()["results"][0]["flagged"]
-    except requests.exceptions.RequestException as e:
+        flagged = openai.Moderation.create(input=text)["results"][0]["flagged"]
+    except openai.error.OpenAIError as e:
         flagged = False
-    except KeyError as e:
+    except (KeyError, IndexError) as e:
         flagged = False
 
     return flagged
@@ -245,7 +238,7 @@ def detect_language(text: str) -> str:
     return lang_code
 
 
-def parse_gradio_auth_creds(filename):
+def parse_gradio_auth_creds(filename: str):
     """Parse a username:password file for gradio authorization."""
     gradio_auth_creds = []
     with open(filename, "r", encoding="utf8") as file:
@@ -258,9 +251,33 @@ def parse_gradio_auth_creds(filename):
     return auth
 
 
-def is_partial_stop(output, stop_str):
+def is_partial_stop(output: str, stop_str: str):
     """Check whether the output contains a partial stop str."""
     for i in range(0, min(len(output), len(stop_str))):
         if stop_str.startswith(output[-i:]):
             return True
     return False
+
+
+def run_cmd(cmd: str):
+    """Run a bash command."""
+    print(cmd)
+    return os.system(cmd)
+
+
+def is_sentence_complete(output: str):
+    """Check whether the output is a complete sentence."""
+    end_symbols = (".", "?", "!", "...", "。", "？", "！", "…", '"', "'", "”")
+    return output.endswith(end_symbols)
+
+
+def get_context_length(config):
+    """Get the context length of a model from a huggingface model config."""
+    if hasattr(config, "max_sequence_length"):
+        return config.max_sequence_length
+    elif hasattr(config, "seq_length"):
+        return config.seq_length
+    elif hasattr(config, "max_position_embeddings"):
+        return config.max_position_embeddings
+    else:
+        return 2048
