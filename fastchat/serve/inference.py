@@ -32,11 +32,11 @@ from transformers.generation.logits_process import (
 
 from fastchat.conversation import get_conv_template, SeparatorStyle
 from fastchat.model.model_adapter import load_model, get_conversation_template
-from fastchat.model.chatglm_model import chatglm_generate_stream
-from fastchat.model.falcon_model import falcon_generate_stream
-from fastchat.model.codet5p_model import codet5p_generate_stream
+from fastchat.model.model_chatglm import generate_stream_chatglm
+from fastchat.model.model_falcon import generate_stream_falcon
+from fastchat.model.model_codet5p import generate_stream_codet5p
 from fastchat.modules.gptq import GptqConfig
-from fastchat.utils import is_partial_stop
+from fastchat.utils import is_partial_stop, is_sentence_complete, get_context_length
 
 from threading import Thread
 
@@ -58,7 +58,13 @@ def prepare_logits_processor(
 
 @torch.inference_mode()
 def generate_stream(
-    model, tokenizer, params, device, context_len=2048, stream_interval=2
+    model,
+    tokenizer,
+    params,
+    device,
+    context_len=2048,
+    stream_interval=2,
+    judge_sent_end=False,
 ):
     prompt = params["prompt"]
     len_prompt = len(prompt)
@@ -67,8 +73,8 @@ def generate_stream(
     top_p = float(params.get("top_p", 1.0))
     top_k = int(params.get("top_k", -1))  # -1 means disable
     max_new_tokens = int(params.get("max_new_tokens", 256))
-    stop_str = params.get("stop", None)
     echo = bool(params.get("echo", True))
+    stop_str = params.get("stop", None)
     stop_token_ids = params.get("stop_token_ids", None) or []
     stop_token_ids.append(tokenizer.eos_token_id)
 
@@ -98,6 +104,7 @@ def generate_stream(
         )
 
     past_key_values = out = None
+    sent_interrupt = False
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
@@ -114,19 +121,25 @@ def generate_stream(
         else:
             if model.config.is_encoder_decoder:
                 out = model.decoder(
-                    input_ids=torch.as_tensor([[token]], device=device),
+                    input_ids=torch.as_tensor(
+                        [[token] if not sent_interrupt else output_ids], device=device
+                    ),
                     encoder_hidden_states=encoder_output,
                     use_cache=True,
-                    past_key_values=past_key_values,
+                    past_key_values=past_key_values if not sent_interrupt else None,
                 )
+                sent_interrupt = False
 
                 logits = model.lm_head(out[0])
             else:
                 out = model(
-                    input_ids=torch.as_tensor([[token]], device=device),
+                    input_ids=torch.as_tensor(
+                        [[token] if not sent_interrupt else output_ids], device=device
+                    ),
                     use_cache=True,
-                    past_key_values=past_key_values,
+                    past_key_values=past_key_values if not sent_interrupt else None,
                 )
+                sent_interrupt = False
                 logits = out.logits
             past_key_values = out.past_key_values
 
@@ -144,11 +157,13 @@ def generate_stream(
             last_token_logits = last_token_logits.float().to("cpu")
 
         if temperature < 1e-5 or top_p < 1e-8:  # greedy
-            token = int(torch.argmax(last_token_logits))
+            _, indices = torch.topk(last_token_logits, 2)
+            tokens = [int(index) for index in indices.tolist()]
         else:
             probs = torch.softmax(last_token_logits, dim=-1)
-            token = int(torch.multinomial(probs, num_samples=1))
-
+            indices = torch.multinomial(probs, num_samples=2)
+            tokens = [int(token) for token in indices.tolist()]
+        token = tokens[0]
         output_ids.append(token)
 
         if token in stop_token_ids:
@@ -168,7 +183,17 @@ def generate_stream(
                 tmp_output_ids,
                 skip_special_tokens=True,
                 spaces_between_special_tokens=False,
+                clean_up_tokenization_spaces=True,
             )
+            # TODO: For the issue of incomplete sentences interrupting output, apply a patch and others can also modify it to a more elegant way
+            if judge_sent_end and stopped and not is_sentence_complete(output):
+                if len(tokens) > 1:
+                    token = tokens[1]
+                    output_ids[-1] = token
+                else:
+                    output_ids.pop()
+                stopped = False
+                sent_interrupt = True
 
             partially_stopped = False
             if stop_str:
@@ -260,6 +285,7 @@ def chat_loop(
     chatio: ChatIO,
     gptq_config: GptqConfig,
     revision: str,
+    judge_sent_end: bool,
     debug: bool,
 ):
     # Model
@@ -282,6 +308,9 @@ def chat_loop(
     # Hardcode T5's default repetition penalty to be 1.2
     if is_t5 and repetition_penalty == 1.0:
         repetition_penalty = 1.2
+
+    # Set context length
+    context_len = get_context_length(model.config)
 
     # Chat
     def new_chat():
@@ -310,20 +339,19 @@ def chat_loop(
 
         conv.append_message(conv.roles[0], inp)
         conv.append_message(conv.roles[1], None)
+        prompt = conv.get_prompt()
 
         if is_chatglm:
-            generate_stream_func = chatglm_generate_stream
-            prompt = conv.messages[conv.offset :]
+            generate_stream_func = generate_stream_chatglm
         elif is_falcon:
-            generate_stream_func = falcon_generate_stream
+            generate_stream_func = generate_stream_falcon
             prompt = conv.get_prompt()
         elif is_codet5p:
-            generate_stream_func = codet5p_generate_stream
+            generate_stream_func = generate_stream_codet5p
             # Codet5p is a code completion model.
             prompt = inp
         else:
             generate_stream_func = generate_stream
-            prompt = conv.get_prompt()
 
         gen_params = {
             "model": model_path,
@@ -337,7 +365,14 @@ def chat_loop(
         }
 
         chatio.prompt_for_output(conv.roles[1])
-        output_stream = generate_stream_func(model, tokenizer, gen_params, device)
+        output_stream = generate_stream_func(
+            model,
+            tokenizer,
+            gen_params,
+            device,
+            context_len=context_len,
+            judge_sent_end=judge_sent_end,
+        )
         t = time.time()
         outputs = chatio.stream_output(output_stream)
         duration = time.time() - t

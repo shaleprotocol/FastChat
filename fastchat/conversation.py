@@ -15,6 +15,8 @@ class SeparatorStyle(Enum):
     ADD_COLON_SPACE_SINGLE = auto()
     NO_COLON_SINGLE = auto()
     ADD_NEW_LINE_SINGLE = auto()
+    CHATGLM = auto()
+    CHATML = auto()
     DOLLY = auto()
     RWKV = auto()
     PHOENIX = auto()
@@ -99,6 +101,32 @@ class Conversation:
                     ret += "\n\n"
                 else:
                     ret += role + ":"
+            return ret
+        elif self.sep_style == SeparatorStyle.CHATGLM:
+            # source: https://huggingface.co/THUDM/chatglm-6b/blob/1d240ba371910e9282298d4592532d7f0f3e9f3e/modeling_chatglm.py#L1302-L1308
+            # source2: https://huggingface.co/THUDM/chatglm2-6b/blob/e186c891cf64310ac66ef10a87e6635fa6c2a579/modeling_chatglm.py#L926
+            round_add_n = 1 if self.name == "chatglm2" else 0
+            if self.system:
+                ret = self.system + self.sep
+            else:
+                ret = ""
+
+            for i, (role, message) in enumerate(self.messages):
+                if i % 2 == 0:
+                    ret += f"[Round {i//2 + round_add_n}]{self.sep}"
+
+                if message:
+                    ret += f"{role}：{message}{self.sep}"
+                else:
+                    ret += f"{role}："
+            return ret
+        elif self.sep_style == SeparatorStyle.CHATML:
+            ret = "" if self.system == "" else self.system + self.sep + "\n"
+            for role, message in self.messages:
+                if message:
+                    ret += role + "\n" + message + self.sep + "\n"
+                else:
+                    ret += role + "\n"
             return ret
         elif self.sep_style == SeparatorStyle.DOLLY:
             seps = [self.sep, self.sep2]
@@ -195,7 +223,10 @@ conv_templates: Dict[str, Conversation] = {}
 def register_conv_template(template: Conversation, override: bool = False):
     """Register a new conversation template."""
     if not override:
-        assert template.name not in conv_templates, f"{name} has been registered."
+        assert (
+            template.name not in conv_templates
+        ), f"{template.name} has been registered."
+
     conv_templates[template.name] = template
 
 
@@ -289,7 +320,34 @@ register_conv_template(
         roles=("### Instruction", "### Response"),
         messages=(),
         offset=0,
-        sep_style=SeparatorStyle.ADD_COLON_SINGLE,
+        sep_style=SeparatorStyle.ADD_COLON_TWO,
+        sep="\n\n",
+        sep2="</s>",
+    )
+)
+
+# ChatGLM default template
+register_conv_template(
+    Conversation(
+        name="chatglm",
+        system="",
+        roles=("问", "答"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.CHATGLM,
+        sep="\n",
+    )
+)
+
+# ChatGLM2 default template
+register_conv_template(
+    Conversation(
+        name="chatglm2",
+        system="",
+        roles=("问", "答"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.CHATGLM,
         sep="\n\n",
     )
 )
@@ -468,17 +526,16 @@ register_conv_template(
 # MPT default template
 register_conv_template(
     Conversation(
-        name="mpt",
+        name="mpt-7b-chat",
         system="""<|im_start|>system
 - You are a helpful assistant chatbot trained by MosaicML.
 - You answer questions.
 - You are excited to be able to help the user, but will refuse to do anything that could be considered harmful to the user.
-- You are more than just an information source, you are also able to write poetry, short stories, and make jokes.
-""",
+- You are more than just an information source, you are also able to write poetry, short stories, and make jokes.""",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         messages=(),
         offset=0,
-        sep_style=SeparatorStyle.ADD_NEW_LINE_SINGLE,
+        sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
         stop_token_ids=[50278, 0],
     )
@@ -489,12 +546,11 @@ register_conv_template(
     Conversation(
         name="mpt-30b-chat",
         system="""<|im_start|>system
-A conversation between a user and an LLM-based AI assistant. The assistant gives helpful and honest answers.
-""",
+A conversation between a user and an LLM-based AI assistant. The assistant gives helpful and honest answers.""",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         messages=(),
         offset=0,
-        sep_style=SeparatorStyle.ADD_NEW_LINE_SINGLE,
+        sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
         stop_token_ids=[50278, 0],
     )
@@ -669,6 +725,21 @@ register_conv_template(
         sep_style=SeparatorStyle.ROBIN,
         sep="\n\n",
         stop_str="###",
+    )
+)
+
+# ref: https://huggingface.co/Salesforce/xgen-7b-8k-inst
+register_conv_template(
+    Conversation(
+        name="xgen",
+        system="A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.\n\n",
+        roles=("### Human: ", "###"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.NO_COLON_SINGLE,
+        sep="\n",
+        stop_token_ids=[50256, 0, 1, 2],
+        stop_str="<|endoftext|>",
     )
 )
 
