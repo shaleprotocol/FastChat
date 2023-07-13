@@ -20,15 +20,15 @@ Thanks to LMSYS team❤️
 
 ### 2023-07
 
-* Fix issues working with AutoGPT and gpt-engineer etc.
+* Fixed issues working with AutoGPT and gpt-engineer etc.
 * Added support for longchat-7b-16k.
 
 ### 2023-06
 
-* Added support for CodeT5p and Falcon.
+* Added support for CodeT5p and Falcon-7b models.
 
 ### 2023-05
 
 * API key database and rate limit enforcement
-* Deployable on kurbernetes
+* Deployable on Kubernetes
 
