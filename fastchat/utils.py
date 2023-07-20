@@ -65,11 +65,11 @@ def build_logger(logger_name, logger_filename):
     )
     handler.setFormatter(formatter)
 
-    for logger in [stdout_logger, stderr_logger, logger]:
-        if logger in visited_loggers:
+    for l in [stdout_logger, stderr_logger, logger]:
+        if l in visited_loggers:
             continue
-        visited_loggers.add(logger)
-        logger.addHandler(handler)
+        visited_loggers.add(l)
+        l.addHandler(handler)
 
     return logger
 
@@ -271,13 +271,24 @@ def is_sentence_complete(output: str):
     return output.endswith(end_symbols)
 
 
+# Models don't use the same configuration key for determining the maximum
+# sequence length.  Store them here so we can sanely check them.
+# NOTE: The ordering here is important.  Some models have two of these and we
+# have a preference for which value gets used.
+SEQUENCE_LENGTH_KEYS = [
+    "max_sequence_length",
+    "seq_length",
+    "max_position_embeddings",
+    "max_seq_len",
+    "model_max_length",
+]
+
+
 def get_context_length(config):
     """Get the context length of a model from a huggingface model config."""
-    if hasattr(config, "max_sequence_length"):
-        return config.max_sequence_length
-    elif hasattr(config, "seq_length"):
-        return config.seq_length
-    elif hasattr(config, "max_position_embeddings"):
-        return config.max_position_embeddings
-    else:
-        return 2048
+    for key in SEQUENCE_LENGTH_KEYS:
+        if hasattr(config, key):
+            val = getattr(config, key)
+            if val is not None:
+                return val
+    return 2048
