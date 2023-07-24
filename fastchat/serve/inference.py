@@ -257,6 +257,8 @@ def generate_stream(
     del past_key_values, out
     gc.collect()
     torch.cuda.empty_cache()
+    if device == "xpu":
+        torch.xpu.empty_cache()
 
 
 class ChatIO(abc.ABC):

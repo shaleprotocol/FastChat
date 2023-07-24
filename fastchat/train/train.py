@@ -14,9 +14,9 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import copy
 from dataclasses import dataclass, field
 import json
+import math
 import pathlib
 from typing import Dict, Optional, Sequence
 
@@ -246,6 +246,13 @@ def train():
         cache_dir=training_args.cache_dir,
     )
     model.config.use_cache = False
+
+    # Set RoPE scaling factor
+    orig_ctx_len = getattr(model.config, "max_position_embeddings", None)
+    if orig_ctx_len and training_args.model_max_length > orig_ctx_len:
+        scaling_factor = math.ceil(training_args.model_max_length / orig_ctx_len)
+        model.config.rope_scaling = {"type": "linear", "factor": scaling_factor}
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
@@ -254,16 +261,16 @@ def train():
         use_fast=False,
     )
     tokenizer.pad_token = tokenizer.unk_token
-
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
+
     trainer = Trainer(
         model=model, tokenizer=tokenizer, args=training_args, **data_module
     )
-
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
+    model.config.use_cache = True
     trainer.save_state()
     safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
