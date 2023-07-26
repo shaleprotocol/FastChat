@@ -18,6 +18,10 @@ Thanks to LMSYS team❤️
 
 ## Dev Log
 
+### 2023-07-26
+
+Support "Llama-2-13b-chat-hf" and make it the default for API.
+
 ### 2023-07
 
 * Fixed issues working with AutoGPT and gpt-engineer etc.
