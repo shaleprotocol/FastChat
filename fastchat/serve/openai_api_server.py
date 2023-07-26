@@ -118,7 +118,7 @@ async def check_model(request) -> Optional[JSONResponse]:
             _worker_addr = await get_worker_address(request.model, client)
         except:
             #### Shale: default model is guaranteed.
-            request.model = os.environ.get('SHALE_DEFAULT_MODEL', 'longchat-7b-16k')
+            request.model = os.environ.get('SHALE_DEFAULT_MODEL', 'Llama-2-13b-chat-hf')
             ####
 
             # Old logic:
