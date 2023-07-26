@@ -9,12 +9,10 @@ Thanks to LMSYS team❤️
 
 ## Coverage of models
 
-* vicuna-13b-v1.1
+* Llama-2-13b-chat-hf
+* longchat-13b-1
 * falcon-7b-instruct
-* falcon-7b
 * codet5p-6b
-* longchat-7b-16k
-
 
 ## Dev Log
 
