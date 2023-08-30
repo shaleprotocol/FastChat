@@ -303,7 +303,12 @@ async def worker_api_get_status(request: Request):
     return controller.worker_api_get_status()
 
 
-if __name__ == "__main__":
+@app.get("/test_connection")
+async def worker_api_get_status(request: Request):
+    return "success"
+
+
+def create_controller():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=21001)
@@ -317,4 +322,9 @@ if __name__ == "__main__":
     logger.info(f"args: {args}")
 
     controller = Controller(args.dispatch_method)
+    return args, controller
+
+
+if __name__ == "__main__":
+    args, controller = create_controller()
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

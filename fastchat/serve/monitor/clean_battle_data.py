@@ -47,6 +47,10 @@ def get_log_files(max_num_files=None):
         for day in range(1, 32):
             dates.append(f"2023-{month:02d}-{day:02d}")
 
+    for month in [8]:
+        for day in range(1, 32):
+            dates.append(f"2023-{month:02d}-{day:02d}")
+
     filenames = []
     for d in dates:
         for i in range(NUM_SERVERS):
@@ -70,6 +74,15 @@ def to_openai_format(messages):
     for i, x in enumerate(messages):
         ret.append({"role": roles[i % 2], "content": x[1]})
     return ret
+
+
+def replace_model_name(old_name):
+    return (
+        old_name.replace("bard", "palm-2")
+        .replace("claude-v1", "claude-1")
+        .replace("claude-instant-v1", "claude-instant-1")
+        .replace("oasst-sft-1-pythia-12b", "oasst-pythia-12b")
+    )
 
 
 def clean_battle_data(log_files):
@@ -101,6 +114,9 @@ def clean_battle_data(log_files):
     ct_leaked_identity = 0
     battles = []
     for row in data:
+        if row["models"][0] is None or row["models"][1] is None:
+            continue
+
         # Resolve model names
         models_public = [remove_html(row["models"][0]), remove_html(row["models"][1])]
         if "model_name" in row["states"][0]:
@@ -155,12 +171,7 @@ def clean_battle_data(log_files):
             continue
 
         # Replace bard with palm
-        models = [
-            m.replace("bard", "palm-2")
-            .replace("claude-v1", "claude-1")
-            .replace("claude-instant-v1", "claude-instant-1")
-            for m in models
-        ]
+        models = [replace_model_name(m) for m in models]
 
         question_id = row["states"][0]["conv_id"]
         conversation_a = to_openai_format(

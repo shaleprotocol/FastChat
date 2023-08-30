@@ -56,19 +56,25 @@ register_model_info(
     "PaLM 2 for Chat (chat-bison@001) by Google",
 )
 register_model_info(
-    ["llama-2-13b-chat", "llama-2-7b-chat", "llama-2-34b-chat", "llama-2-70b-chat"],
+    ["llama-2-70b-chat", "llama-2-34b-chat", "llama-2-13b-chat", "llama-2-7b-chat"],
     "Llama 2",
     "https://ai.meta.com/llama/",
     "open foundation and fine-tuned chat models by Meta",
 )
 register_model_info(
+    ["codellama-34b-instruct", "codellama-13b-instruct", "codellama-7b-instruct"],
+    "Code Llama",
+    "https://ai.meta.com/blog/code-llama-large-language-model-coding/",
+    "open foundation models for code by Meta",
+)
+register_model_info(
     [
+        "vicuna-33b",
+        "vicuna-33b-v1.3",
         "vicuna-13b",
         "vicuna-13b-v1.3",
         "vicuna-7b",
         "vicuna-7b-v1.3",
-        "vicuna-33b",
-        "vicuna-33b-v1.3",
     ],
     "Vicuna",
     "https://lmsys.org/blog/2023-03-30-vicuna/",
@@ -79,6 +85,12 @@ register_model_info(
     "WizardLM",
     "https://github.com/nlpxucan/WizardLM",
     "an instruction-following LLM using evol-instruct by Microsoft",
+)
+register_model_info(
+    ["wizardcoder-15b-v1.0"],
+    "WizardLM",
+    "https://github.com/nlpxucan/WizardLM/tree/main/WizardCoder",
+    "Empowering Code Large Language Models with Evol-Instruct",
 )
 register_model_info(
     ["mpt-7b-chat", "mpt-30b-chat"],
@@ -140,7 +152,12 @@ register_model_info(
     "https://arxiv.org/abs/2302.13971",
     "open and efficient foundation language models by Meta",
 )
-
+register_model_info(
+    ["open-llama-7b-v2-open-instruct", "open-llama-7b-open-instruct"],
+    "Open LLaMa (Open Instruct)",
+    "https://medium.com/vmware-data-ml-blog/starter-llm-for-the-enterprise-instruction-tuning-openllama-7b-d05fc3bbaccc",
+    "Open LLaMa fine-tuned on instruction-following data by VMware",
+)
 register_model_info(
     ["dolly-v2-12b"],
     "Dolly",
@@ -170,6 +187,12 @@ register_model_info(
     "Phoenix-7B",
     "https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b",
     "a multilingual chat assistant fine-tuned from Bloomz to democratize ChatGPT across languages by CUHK(SZ)",
+)
+register_model_info(
+    ["realm-7b-v1"],
+    "ReaLM",
+    "https://github.com/FreedomIntelligence/ReaLM",
+    "A chatbot fine-tuned from LLaMA2 with data generated via iterative calls to UserGPT and ChatGPT by CUHK(SZ) and SRIBD.",
 )
 register_model_info(
     ["billa-7b-sft"],
@@ -235,4 +258,28 @@ register_model_info(
     "InternLM",
     "https://huggingface.co/internlm/internlm-chat-7b",
     "InternLM is a multi-language large-scale language model (LLM), developed by SHLAB.",
+)
+register_model_info(
+    ["Qwen-7B-Chat"],
+    "Qwen",
+    "https://huggingface.co/Qwen/Qwen-7B-Chat",
+    "Qwen is a multi-language large-scale language model (LLM), developed by Damo Academy.",
+)
+register_model_info(
+    ["Llama2-Chinese-13b-Chat", "LLama2-Chinese-13B"],
+    "Llama2-Chinese",
+    "https://huggingface.co/FlagAlpha/Llama2-Chinese-13b-Chat",
+    "Llama2-Chinese is a multi-language large-scale language model (LLM), developed by FlagAlpha.",
+)
+register_model_info(
+    ["Vigogne-2-7B-Instruct", "Vigogne-2-13B-Instruct"],
+    "Vigogne-Instruct",
+    "https://huggingface.co/bofenghuang/vigogne-2-7b-instruct",
+    "Vigogne-Instruct is a French large language model (LLM) optimized for instruction-following, developed by Bofeng Huang",
+)
+register_model_info(
+    ["Vigogne-2-7B-Chat", "Vigogne-2-13B-Chat"],
+    "Vigogne-Chat",
+    "https://huggingface.co/bofenghuang/vigogne-2-7b-chat",
+    "Vigogne-Chat is a French large language model (LLM) optimized for instruction-following and multi-turn dialogues, developed by Bofeng Huang",
 )

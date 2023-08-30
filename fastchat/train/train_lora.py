@@ -1,6 +1,6 @@
 # Usage: deepspeed train_lora.py --deepspeed <$PATH_TO_DEEPSPEED_CONFIG>
 
-# Adopted from tatsu-lab@stanford_alpaca. Below is the original copyright:
+# Adapted from tatsu-lab@stanford_alpaca. Below is the original copyright:
 #    Copyright 2023 Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
@@ -163,6 +163,13 @@ def train():
             model.model_parallel = True
 
     model = get_peft_model(model, lora_config)
+    if training_args.flash_attn:
+        for name, module in model.named_modules():
+            if "norm" in name:
+                module = module.to(compute_dtype)
+            if "lm_head" in name or "embed_tokens" in name:
+                if hasattr(module, "weight"):
+                    module = module.to(compute_dtype)
     if training_args.deepspeed is not None and training_args.local_rank == 0:
         model.print_trainable_parameters()
 

@@ -8,6 +8,10 @@ python3 -m fastchat.serve.cli --model lmsys/fastchat-t5-3b-v1.0
 Other commands:
 - Type "!!exit" or an empty line to exit.
 - Type "!!reset" to start a new conversation.
+- Type "!!remove" to remove the last prompt.
+- Type "!!regen" to regenerate the last message.
+- Type "!!save <filename>" to save the conversation history to a json file.
+- Type "!!load <filename>" to load a conversation history from a json file.
 """
 import argparse
 import os
@@ -25,6 +29,7 @@ from rich.markdown import Markdown
 
 from fastchat.model.model_adapter import add_model_args
 from fastchat.modules.gptq import GptqConfig
+from fastchat.modules.awq import AWQConfig
 from fastchat.serve.inference import ChatIO, chat_loop
 
 
@@ -61,6 +66,9 @@ class SimpleChatIO(ChatIO):
         print(" ".join(output_text[pre:]), flush=True)
         return " ".join(output_text)
 
+    def print_output(self, text: str):
+        print(text)
+
 
 class RichChatIO(ChatIO):
     bindings = KeyBindings()
@@ -72,7 +80,8 @@ class RichChatIO(ChatIO):
     def __init__(self, multiline: bool = False, mouse: bool = False):
         self._prompt_session = PromptSession(history=InMemoryHistory())
         self._completer = WordCompleter(
-            words=["!!exit", "!!reset"], pattern=re.compile("$")
+            words=["!!exit", "!!reset", "!!remove", "!!regen", "!!save", "!!load"],
+            pattern=re.compile("$"),
         )
         self._console = Console()
         self._multiline = multiline
@@ -132,6 +141,9 @@ class RichChatIO(ChatIO):
         self._console.print()
         return text
 
+    def print_output(self, text: str):
+        self.stream_output([{"text": text}])
+
 
 class ProgrammaticChatIO(ChatIO):
     def prompt_for_input(self, role) -> str:
@@ -169,6 +181,9 @@ class ProgrammaticChatIO(ChatIO):
         print(" ".join(output_text[pre:]), flush=True)
         return " ".join(output_text)
 
+    def print_output(self, text: str):
+        print(text)
+
 
 def main(args):
     if args.gpus:
@@ -196,19 +211,25 @@ def main(args):
             args.load_8bit,
             args.cpu_offloading,
             args.conv_template,
+            args.conv_system_msg,
             args.temperature,
             args.repetition_penalty,
             args.max_new_tokens,
             chatio,
-            GptqConfig(
+            gptq_config=GptqConfig(
                 ckpt=args.gptq_ckpt or args.model_path,
                 wbits=args.gptq_wbits,
                 groupsize=args.gptq_groupsize,
                 act_order=args.gptq_act_order,
             ),
-            args.revision,
-            args.judge_sent_end,
-            args.debug,
+            awq_config=AWQConfig(
+                ckpt=args.awq_ckpt or args.model_path,
+                wbits=args.awq_wbits,
+                groupsize=args.awq_groupsize,
+            ),
+            revision=args.revision,
+            judge_sent_end=args.judge_sent_end,
+            debug=args.debug,
             history=not args.no_history,
         )
     except KeyboardInterrupt:
@@ -220,6 +241,9 @@ if __name__ == "__main__":
     add_model_args(parser)
     parser.add_argument(
         "--conv-template", type=str, default=None, help="Conversation prompt template."
+    )
+    parser.add_argument(
+        "--conv-system-msg", type=str, default=None, help="Conversation system message."
     )
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--repetition_penalty", type=float, default=1.0)

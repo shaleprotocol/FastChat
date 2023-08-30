@@ -121,13 +121,29 @@ def get_model_answers(
                         output_ids = output_ids[0]
                     else:
                         output_ids = output_ids[0][len(input_ids[0]) :]
+
+                    # be consistent with the template's stop_token_ids
+                    if conv.stop_token_ids:
+                        stop_token_ids_index = [
+                            i
+                            for i, id in enumerate(output_ids)
+                            if id in conv.stop_token_ids
+                        ]
+                        if len(stop_token_ids_index) > 0:
+                            output_ids = output_ids[: stop_token_ids_index[0]]
+
                     output = tokenizer.decode(
                         output_ids,
-                        skip_special_tokens=True,
                         spaces_between_special_tokens=False,
                     )
-                    if conv.stop_str:
+                    if conv.stop_str and output.find(conv.stop_str) > 0:
                         output = output[: output.find(conv.stop_str)]
+                    for special_token in tokenizer.special_tokens_map.values():
+                        if isinstance(special_token, list):
+                            for special_tok in special_token:
+                                output = output.replace(special_tok, "")
+                        else:
+                            output = output.replace(special_token, "")
                     output = output.strip()
 
                     if conv.name == "xgen" and output.startswith("Assistant:"):

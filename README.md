@@ -9,12 +9,16 @@ Thanks to LMSYS team❤️
 
 ## Coverage of models
 
+We are focused to support Llama2 at scale now. If you want any other models, please contact.
+
 * Llama-2-13b-chat-hf
-* longchat-13b-1
-* falcon-7b-instruct
-* codet5p-6b
+
 
 ## Dev Log
+
+### 2023-08
+
+Support llama2 at scale.
 
 ### 2023-07-26
 
