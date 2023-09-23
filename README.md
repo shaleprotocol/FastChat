@@ -16,6 +16,10 @@ We are focused to support Llama2 at scale now. If you want any other models, ple
 
 ## Dev Log
 
+### 2023-09
+
+Sync upstream changes
+
 ### 2023-08
 
 Support llama2 at scale.
@@ -37,4 +41,3 @@ Support "Llama-2-13b-chat-hf" and make it the default for API.
 
 * API key database and rate limit enforcement
 * Deployable on Kubernetes
-
