@@ -11,10 +11,15 @@ Thanks to LMSYS team❤️
 
 We are focused to support Llama2 at scale now. If you want any other models, please contact.
 
-* Llama-2-13b-chat-hf
+* OpenHermes-2.5-Mistral-7B
 
 
 ## Dev Log
+
+### 2023-11
+
+* Sync upstream changes
+* Support "OpenHermes-2.5-Mistral-7B"
 
 ### 2023-09
 
