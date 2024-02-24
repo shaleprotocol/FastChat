@@ -1,1 +1,1 @@
-python3 -m fastchat.serve.cli --model-path /data/ml/llm/vicuna-13b-v1.1 --num-gpus 2
+python3 -m fastchat.serve.cli --model-path /data/ml/llm/OpenHermes-2.5-Mistral-7B --num-gpus 2 --max-gpu-memory 8GiB
