@@ -16,6 +16,10 @@ We are focused to support Llama2 at scale now. If you want any other models, ple
 
 ## Dev Log
 
+### 2024-02
+
+Sync upstream changes
+
 ### 2023-09
 
 Sync upstream changes

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fschat"
-version = "0.2.33"
+version = "0.2.36"
 description = "An open platform for training, serving, and evaluating large language model based chatbots."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -13,15 +13,15 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = [
-    "accelerate>=0.21", "einops", "fastapi", "gradio", "httpx", "markdown2[all]", "mysqlclient", "nh3", "numpy",
-    "peft", "prompt_toolkit>=3.0.0", "pydantic<2,>=1", "redis", "requests", "rich>=10.0.0", "sentencepiece",
+    "accelerate>=0.21", "aiohttp", "einops", "fastapi", "gradio", "httpx", "markdown2[all]", "mysqlclient", "nh3", "numpy",
+    "peft", "prompt_toolkit>=3.0.0", "pydantic", "redis", "requests", "rich>=10.0.0", "sentencepiece",
     "shortuuid", "SQLAlchemy", "slowapi", "tiktoken", "tokenizers>=0.12.1", "torch",
-    "transformers>=4.31.0", "uvicorn", "wandb",
+    "transformers>=4.31.0", "uvicorn", "wandb"
 ]
 
 [project.optional-dependencies]
 model_worker = ["accelerate>=0.21", "peft", "sentencepiece", "torch", "transformers>=4.31.0", "protobuf"]
-webui = ["gradio"]
+webui = ["gradio>=4.10"]
 train = ["einops", "flash-attn>=2.0", "wandb"]
 llm_judge = ["openai<1", "anthropic>=0.3", "ray"]
 dev = ["black==23.3.0", "pylint==2.8.2"]
