@@ -204,16 +204,10 @@ class APIKeyChecker(BaseHTTPMiddleware):
 
 class RequestLogger(BaseHTTPMiddleware):
 
-    async def set_body(self, request: Request, body: bytes):
-        async def receive() -> Message:
-            return {'type': 'http.request', 'body': body}
-        request._receive = receive
-
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         req_body = await request.body()
-        await self.set_body(request, req_body)
         response = await call_next(request)
         asyncio.create_task(log_request_to_db(request, req_body))
         return response

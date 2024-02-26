@@ -307,8 +307,6 @@ async def get_gen_params(
 
     if isinstance(messages, str):
         prompt = messages
-    elif isinstance(messages, list) and len(messages) > 0 and isinstance(messages[0], str):
-        prompt = '. '.join(messages)
         images = []
     else:
         for message in messages:
