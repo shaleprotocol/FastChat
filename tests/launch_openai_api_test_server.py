@@ -49,5 +49,13 @@ if __name__ == "__main__":
 
         launch_process(cmd)
 
+        if "llava" in model_path.lower():
+            cmd += f"--tokenizer-path llava-hf/llava-1.5-7b-hf"
+
+        if worker_name == "vllm_worker":
+            cmd += "--tokenizer hf-internal-testing/llama-tokenizer"
+
+        launch_process(cmd)
+
     while True:
         pass

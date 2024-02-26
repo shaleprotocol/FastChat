@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
     "accelerate>=0.21", "aiohttp", "einops", "fastapi", "gradio", "httpx", "markdown2[all]", "mysqlclient", "nh3", "numpy",
-    "peft", "prompt_toolkit>=3.0.0", "pydantic", "redis", "requests", "rich>=10.0.0", "sentencepiece",
+    "peft", "prompt_toolkit>=3.0.0", "pydantic", "psutil", "redis", "requests", "rich>=10.0.0", "sentencepiece",
     "shortuuid", "SQLAlchemy", "slowapi", "tiktoken", "tokenizers>=0.12.1", "torch",
     "transformers>=4.31.0", "uvicorn", "wandb"
 ]

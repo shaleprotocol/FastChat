@@ -573,26 +573,6 @@ footer {
     width: auto;
     float: left;
 }
-.image-container {
-    display: flex;
-    align-items: center;
-    padding: 1px;
-}
-.image-container img {
-    margin: 0 30px;
-    height: 20px;
-    max-height: 100%;
-    width: auto;
-    max-width: 20%;
-}
-.image-about img {
-    margin: 0 30px;
-    margin-top:  30px;
-    height: 60px;
-    max-height: 100%;
-    width: auto;
-    float: left;
-}
 """
 
 
