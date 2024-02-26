@@ -224,11 +224,6 @@ def check_requests(request) -> Optional[JSONResponse]:
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.top_k} is out of Range. Either set top_k to -1 or >=1.",
         )
-    if request.top_k is not None and (request.top_k > -1 and request.top_k < 1):
-        return create_error_response(
-            ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.top_k} is out of Range. Either set top_k to -1 or >=1.",
-        )
     if request.stop is not None and (
         not isinstance(request.stop, str) and not isinstance(request.stop, list)
     ):

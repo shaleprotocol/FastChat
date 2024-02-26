@@ -380,18 +380,6 @@ register_model_info(
 )
 
 register_model_info(
-    ["openchat-3.5"],
-    "OpenChat 3.5",
-    "https://github.com/imoneoi/openchat",
-    "OpenChat 3.5 is a versatile, open-source language model fine-tuned using C-RLFT",
-)
-register_model_info(
-    ["starling-lm-7b-alpha"],
-    "Starling-LM-7B-alpha",
-    "https://huggingface.co/berkeley-nest/Starling-LM-7B-alpha",
-    "an open model trained using RLAIF by Berkeley",
-)
-register_model_info(
     ["llama-7b", "llama-13b"],
     "LLaMA",
     "https://arxiv.org/abs/2302.13971",
@@ -492,16 +480,6 @@ register_model_info(
 )
 
 register_model_info(
-    [
-        "spicyboros-7b-2.2",
-        "spicyboros-13b-2.2",
-        "spicyboros-70b-2.2",
-    ],
-    "spicyboros",
-    "https://huggingface.co/jondurbin/spicyboros-70b-2.2",
-    "de-aligned versions of the airoboros models",
-)
-register_model_info(
     ["Robin-7b-v2", "Robin-13b-v2", "Robin-33b-v2"],
     "Robin-v2",
     "https://huggingface.co/OptimalScale/robin-7b-v2-delta",
@@ -571,12 +549,6 @@ register_model_info(
     "New extended Chinese vocabulary beyond Llama-2, open-sourcing the Chinese LLaMA-2 and Alpaca-2 LLMs.",
 )
 
-register_model_info(
-    ["Chinese-Alpaca-2-7B", "Chinese-Alpaca-2-13B"],
-    "Chinese-Alpaca",
-    "https://huggingface.co/hfl/chinese-alpaca-2-13b",
-    "New extended Chinese vocabulary beyond Llama-2, open-sourcing the Chinese LLaMA-2 and Alpaca-2 LLMs.",
-)
 register_model_info(
     ["Vigogne-2-7B-Instruct", "Vigogne-2-13B-Instruct"],
     "Vigogne-Instruct",
@@ -684,59 +656,10 @@ register_model_info(
     "https://github.com/haotian-liu/LLaVA",
     "an open large language and vision assistant",
 )
-register_model_info(
-    ["stable-vicuna-13B-HF"],
-    "stable-vicuna",
-    "https://huggingface.co/TheBloke/stable-vicuna-13B-HF",
-    "StableVicuna is a Vicuna model fine-tuned using RLHF via PPO on various conversational and instructional datasets.",
-)
-register_model_info(
-    ["deluxe-chat-v1", "deluxe-chat-v1.1"],
-    "DeluxeChat",
-    "",
-    "Deluxe Chat",
-)
-register_model_info(
-    [
-        "Xwin-LM-7B-V0.1",
-        "Xwin-LM-13B-V0.1",
-        "Xwin-LM-70B-V0.1",
-        "Xwin-LM-7B-V0.2",
-        "Xwin-LM-13B-V0.2",
-    ],
-    "Xwin-LM",
-    "https://github.com/Xwin-LM/Xwin-LM",
-    "Chat models developed by Xwin-LM team",
-)
 
 register_model_info(
-    ["lemur-70b-chat"],
-    "Lemur-Chat",
-    "https://huggingface.co/OpenLemur/lemur-70b-chat-v1",
-    "an openly accessible language model optimized for both natural language and coding capabilities ",
-)
-
-register_model_info(
-    ["Mistral-7B-OpenOrca"],
-    "Open-Orca",
-    "https://huggingface.co/Open-Orca/Mistral-7B-OpenOrca",
-    "A fine-tune of [Mistral 7B](https://huggingface.co/mistralai/Mistral-7B-v0.1) using [OpenOrca dataset](https://huggingface.co/datasets/Open-Orca/OpenOrca)",
-)
-
-register_model_info(
-    [
-        "AquilaChat-7B",
-        "AquilaChat2-7B",
-        "AquilaChat2-34B",
-    ],
-    "Aquila-Chat",
-    "https://huggingface.co/BAAI/AquilaChat2-34B",
-    "Chat models developed by BAAI team",
-)
-
-register_model_info(
-    ["Yi-34B-Chat", "Yi-6B-Chat"],
-    "Yi-Chat",
-    "https://huggingface.co/01-ai",
-    "A large language model by 01.AI.",
+    ["gemma-7b-it", "gemma-2b-it"],
+    "Gemma",
+    "https://blog.google/technology/developers/gemma-open-models/",
+    "Gemma by Google",
 )

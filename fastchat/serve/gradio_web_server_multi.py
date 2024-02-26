@@ -146,6 +146,9 @@ window.__gradio_mode__ = "app";
             with gr.Tab("About Us", id=5):
                 about = build_about()
 
+            with gr.Tab("About Us", id=5):
+                about = build_about()
+
         url_params = gr.JSON(visible=False)
 
         if args.model_list_mode not in ["once", "reload"]:
