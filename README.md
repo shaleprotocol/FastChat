@@ -11,7 +11,8 @@ Thanks to LMSYS team❤️
 
 We are focused to support Llama2 at scale now. If you want any other models, please contact.
 
-* Llama-2-13b-chat-hf
+* OpenHermes-2.5-Mistral-7B
+* Gemma-7b-it
 
 
 ## Dev Log
